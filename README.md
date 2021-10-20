@@ -1,17 +1,25 @@
+# Requirements
+- python 3.7 (for tensorflow==1.15)
+
 # README
 It'a tensorflow imeplementaion of TPAMI2020 paper "Adversarial Joint-Learning Recurrent Neural Network for Incomplete Time Series Classification" . The paper can be found at https://ieeexplore.ieee.org/abstract/document/9210118.
 
 Qianli Ma and Sen Li equally contributed to this work.
 
 ## To run your own model
-```
+```bash
 python ajrnn.py --batch_size 20 --epoch 400 --lamda_D 1 --G_epoch 5 --train_data_filename xxx.csv --test_data_filename xxx.csv
+
+# for example 
+python ajrnn.py --batch_size 20 --epoch 400 --lamda_D 1 --G_epoch 5 --train_data_filename results/data/50words/50words_TRAIN_20.csv --test_data_filename results/data/50words/50words_TEST_20.csv
 ```
 ## To load saved model
-```
+```bash
 cd ./results
 python ajrnn.py --dataset_name xxx --missing_ratio xxx
-for example python ajrnn.py --dataset_name Computers --missing_ratio 20
+
+# for example 
+python ajrnn.py --dataset_name Computers --missing_ratio 20
 ```
 
 
