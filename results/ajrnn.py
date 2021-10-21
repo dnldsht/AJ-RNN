@@ -39,24 +39,24 @@ def load_model_N_inference(dataset,missing_ratio):
     input_dimension_size = 1
     num_steps = test_data.shape[1]
     
-    saver = tf.train.import_meta_graph("./model/"+model_dir+"/model.ckpt.meta")
-    gpu_config = tf.ConfigProto()
+    saver = tf.compat.v1.train.import_meta_graph("./model/"+model_dir+"/model.ckpt.meta")
+    gpu_config = tf.compat.v1.ConfigProto()
     gpu_config.gpu_options.allow_growth = True
-    with tf.Session(config=gpu_config) as sess:
+    with tf.compat.v1.Session(config=gpu_config) as sess:
         
         
         saver.restore(sess, "./model/"+model_dir+"/model.ckpt")
         
-        accuracy = tf.get_default_graph().get_tensor_by_name('accuracy:0')
-        prediction = tf.get_default_graph().get_tensor_by_name('Generator_LSTM/prediction:0')
-        Label_predict = tf.get_default_graph().get_tensor_by_name('test_probab:0')
-        Last_hidden_output = tf.get_default_graph().get_tensor_by_name('Generator_LSTM/RNN/RNN/multi_rnn_cell/cell_0/gru_cell/add_'+str(Length_dict[dataset]-1) +':0')
-        input_tensors_input = tf.get_default_graph().get_tensor_by_name("inputs:0")
-        input_tensors_prediction_target = tf.get_default_graph().get_tensor_by_name("prediction_target:0")
-        input_tensors_mask = tf.get_default_graph().get_tensor_by_name("mask:0")
-        input_tensors_label_target = tf.get_default_graph().get_tensor_by_name("label_target:0")
-        input_tensors_lstm_keep_prob = tf.get_default_graph().get_tensor_by_name("lstm_keep_prob:0")
-        input_classification_keep_prob = tf.get_default_graph().get_tensor_by_name("classification_keep_prob:0")
+        accuracy = tf.compat.v1.get_default_graph().get_tensor_by_name('accuracy:0')
+        prediction = tf.compat.v1.get_default_graph().get_tensor_by_name('Generator_LSTM/prediction:0')
+        Label_predict = tf.compat.v1.get_default_graph().get_tensor_by_name('test_probab:0')
+        Last_hidden_output = tf.compat.v1.get_default_graph().get_tensor_by_name('Generator_LSTM/RNN/RNN/multi_rnn_cell/cell_0/gru_cell/add_'+str(Length_dict[dataset]-1) +':0')
+        input_tensors_input = tf.compat.v1.get_default_graph().get_tensor_by_name("inputs:0")
+        input_tensors_prediction_target = tf.compat.v1.get_default_graph().get_tensor_by_name("prediction_target:0")
+        input_tensors_mask = tf.compat.v1.get_default_graph().get_tensor_by_name("mask:0")
+        input_tensors_label_target = tf.compat.v1.get_default_graph().get_tensor_by_name("label_target:0")
+        input_tensors_lstm_keep_prob = tf.compat.v1.get_default_graph().get_tensor_by_name("lstm_keep_prob:0")
+        input_classification_keep_prob = tf.compat.v1.get_default_graph().get_tensor_by_name("classification_keep_prob:0")
     
         
         
