@@ -1,5 +1,5 @@
 # Requirements
-- python 3.7 (for tensorflow==1.15)
+- python 3.9 (for tensorflow==2.6)
 
 # README
 It'a tensorflow imeplementaion of TPAMI2020 paper "Adversarial Joint-Learning Recurrent Neural Network for Incomplete Time Series Classification" . The paper can be found at https://ieeexplore.ieee.org/abstract/document/9210118.
