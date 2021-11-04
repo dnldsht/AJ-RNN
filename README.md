@@ -12,6 +12,9 @@ python ajrnn.py --batch_size 20 --epoch 400 --lamda_D 1 --G_epoch 5 --train_data
 
 # for example 
 python ajrnn.py --batch_size 20 --epoch 400 --lamda_D 1 --G_epoch 5 --train_data_filename results/data/50words/50words_TRAIN_20.csv --test_data_filename results/data/50words/50words_TEST_20.csv
+
+# to save you model add
+--save path/to/model
 ```
 ## To load saved model
 ```bash
