@@ -4,6 +4,8 @@ import copy
 import tensorflow as tf
 import argparse
 
+tf.compat.v1.disable_eager_execution()
+
 '''load saved model'''
 def load_model_N_inference(dataset,missing_ratio):
     Length_dict = {

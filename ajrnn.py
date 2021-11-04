@@ -5,6 +5,9 @@ import utils
 import os
 import numpy as np
 import argparse
+
+tf.compat.v1.disable_eager_execution()
+
 Missing_value = 128.0
 
 
@@ -23,6 +26,7 @@ class Config(object):
     G_epoch = None  #epoch for training of Generator
     train_data_filename = None
     test_data_filename = None
+    save = None
 
 
 def RNN_cell(type, hidden_size, keep_prob):
@@ -229,6 +233,8 @@ def main(config):
         # )
         # writer.add_graph(sess.graph)
         # writer.flush()
+        if config.save is not None:
+            saver = tf.compat.v1.train.Saver(max_to_keep=3)
 				
 
 #------------------------------------------------train---------------------------------------------------
@@ -264,7 +270,10 @@ def main(config):
             #  name="train_acc",
             #  step=i,
             #  profiler_outdir=logdir)
-
+            
+            if config.save is not None and i % 100 == 0:
+                # Append the step number to the checkpoint name:
+                saver.save(sess, config.save, global_step=i)
 
 
         '''test'''
@@ -302,6 +311,7 @@ if __name__ == "__main__":
     parser.add_argument('--lamda',type=float,required=False,default=1,help='coefficient that balances the prediction loss')
     parser.add_argument('--D_epoch',type=int,required=False,default=1,help='frequency of updating dicriminator in an adversarial training epoch')
     parser.add_argument('--GPU',type=str,required=False,default='0',help='GPU to use')
+    parser.add_argument('--save',type=str,required=False,default=None,help='Path where to save model')
 
     config = parser.parse_args()
     main(config)
