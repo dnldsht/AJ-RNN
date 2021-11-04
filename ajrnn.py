@@ -36,14 +36,14 @@ def RNN_cell(type, hidden_size, keep_prob):
 class Generator(object):
 
 	def __init__(self, config):
-		self.batch_size = config.batch_size
-		self.hidden_size = config.hidden_size
-		self.num_steps = config.num_steps
-		self.input_dimension_size = config.input_dimension_size
-		self.cell_type = config.cell_type
-		self.lamda = config.lamda
-		self.class_num = config.class_num
-		self.layer_num = config.layer_num
+		self.batch_size = config.batch_size # configurable
+		self.hidden_size = config.hidden_size # congigurable for GRU/LSTM
+		self.num_steps = config.num_steps # length of input array
+		self.input_dimension_size = config.input_dimension_size # dimension of input eleemnt array univariate 1 
+		self.cell_type = config.cell_type # RNN Cell type
+		self.lamda = config.lamda #coefficient that balances the prediction loss
+		self.class_num = config.class_num # number of targes
+		self.layer_num = config.layer_num # number of layers of AJRNN
 		self.name = 'Generator_LSTM'
 
 	def build_model(self):
@@ -51,7 +51,7 @@ class Generator(object):
 		# input has shape (batch_size, n_steps, embedding_size)
 		input = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.num_steps, self.input_dimension_size], name = 'inputs') # input
 
-		# prediction_target has shape (batch_size, n_steps-1, embedding_size)
+		# prediction_target has shape (batch_size, n_steps-1, embedding_size) # TODO why -1?
 		prediction_target = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.num_steps - 1, self.input_dimension_size], name = 'prediction_target')
 		mask = tf.compat.v1.placeholder(tf.float32, [self.batch_size, self.num_steps - 1, self.input_dimension_size], name = 'mask')
 
@@ -222,6 +222,15 @@ def main(config):
 		#global_variables_initializer
         sess.run(tf.compat.v1.global_variables_initializer())
 
+        # Tensorboard
+        # writer = tf.compat.v1.summary.FileWriter(
+        #     logdir, graph=None, max_queue=10, flush_secs=120, graph_def=None,
+        #     filename_suffix=None, session=sess
+        # )
+        # writer.add_graph(sess.graph)
+        # writer.flush()
+				
+
 #------------------------------------------------train---------------------------------------------------
         Epoch = config.epoch
 
@@ -250,6 +259,11 @@ def main(config):
                 total_train_accuracy.append(batch_accuracy)
 
             print ("Loss:",np.mean(total_loss),"Train acc:",np.mean(np.array(total_train_accuracy).reshape(-1)))
+            # Tensorboard
+            #tf.summary.trace_export(
+            #  name="train_acc",
+            #  step=i,
+            #  profiler_outdir=logdir)
 
 
 
