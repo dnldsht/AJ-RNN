@@ -1,0 +1,1 @@
+- https://www.roseindia.net/tensorflow/tensorflow2/tensorflow-2.0-session-run.shtml

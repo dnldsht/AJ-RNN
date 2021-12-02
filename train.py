@@ -1,15 +1,9 @@
 import tensorflow as tf
-from tensorflow.python.ops.gen_math_ops import select
-import tf_slim as slim
 import utils
-import os
 import numpy as np
 import argparse
 from tensorflow import keras
-#import keras
 from layers import Generator, Discriminator
-
-
 
 
 class Config(object):
@@ -29,44 +23,47 @@ class Config(object):
     test_data_filename = None
     save = None
 
+
 class AJRNN(keras.Model):
-  def __init__(
+    def __init__(
         self,
         config: Config,
     ):
-      super(AJRNN, self).__init__()
-      self.config = config 
-      self.generator = Generator(config)
-      self.discriminator = Discriminator()
+        super(AJRNN, self).__init__()
+        self.config = config
+        self.generator = Generator(config)
+        self.discriminator = Discriminator()
 
-  def compile(self, d_optimizer, g_optimizer, loss_fn):
+    def compile(self, d_optimizer, g_optimizer, loss_fn):
         super(AJRNN, self).compile()
         self.d_optimizer = d_optimizer
         self.g_optimizer = g_optimizer
         self.loss_fn = loss_fn
 
-  def train_step(self, data):
-    # how do we fucking split??
-    inputs, prediction_target, mask, labels = data
-    
-   # Train the discriminator
-    with tf.GradientTape() as tape:
-        predictions = self.discriminator(inputs)
-        d_loss = self.loss_fn(labels, predictions)
-    grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
-    self.d_optimizer.apply_gradients(
-        zip(grads, self.discriminator.trainable_weights)
-    )
+    def train_step(self, data):
+        # how do we fucking split??
+        inputs, prediction_target, mask, labels = data
+        print(self.discriminator.trainable_weights)
 
-    # Train the generator (note that we should *not* update the weights
-    # of the discriminator)!
-    with tf.GradientTape() as tape:
-        predictions = self.discriminator(self.generator(random_latent_vectors))
-        g_loss = self.loss_fn(misleading_labels, predictions)
-    grads = tape.gradient(g_loss, self.generator.trainable_weights)
-    self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_weights))
-    return {"d_loss": d_loss, "g_loss": g_loss}
+       # Train the discriminator
+        with tf.GradientTape() as tape:
+            predictions = self.discriminator(inputs)
+            d_loss = self.loss_fn(prediction_target, predictions)
+        grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+        self.d_optimizer.apply_gradients(
+            zip(grads, self.discriminator.trainable_weights)
+        )
 
+        # Train the generator (note that we should *not* update the weights
+        # of the discriminator)!
+        # with tf.GradientTape() as tape:
+        #     predictions = self.discriminator(
+        #         self.generator(random_latent_vectors))
+        #     g_loss = self.loss_fn(misleading_labels, predictions)
+        # grads = tape.gradient(g_loss, self.generator.trainable_weights)
+        # self.g_optimizer.apply_gradients(
+        #     zip(grads, self.generator.trainable_weights))
+        return {"d_loss": d_loss, "g_loss": 0}
 
 
 def main(cfg: Config):
@@ -88,10 +85,8 @@ def main(cfg: Config):
         g_optimizer=keras.optimizers.Adam(learning_rate=0.0003),
         loss_fn=keras.losses.BinaryCrossentropy(from_logits=True),
     )
-    
-    ajrnn.fit(train_data, train_label, cfg.batch_size, cfg.epoch)
 
-   
+    ajrnn.fit(train_data, train_label, batch_size=cfg.batch_size, epochs=1)
 
 
 if __name__ == "__main__":

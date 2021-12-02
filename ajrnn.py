@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 from tensorflow.keras import layers
 
-tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 
 Missing_value = 128.0
 
@@ -35,9 +35,10 @@ def RNN_cell(type, hidden_size, keep_prob):
     return cell
 
 
-class Generator(object):
+class Generator(layers.Layer):
 
-    def __init__(self, config):
+    def __init__(self, config, *args, **kwargs):
+        super().__init__(name='Generator_LSTM', *args, **kwargs, )
         self.batch_size = config.batch_size  # configurable
         self.hidden_size = config.hidden_size  # congigurable for GRU/LSTM
         self.num_steps = config.num_steps  # length of input array
@@ -47,43 +48,62 @@ class Generator(object):
         self.lamda = config.lamda  # coefficient that balances the prediction loss
         self.class_num = config.class_num  # number of targes
         self.layer_num = config.layer_num  # number of layers of AJRNN
-        self.name = 'Generator_LSTM'
-
-    def build_model(self):
-
-        # input has shape (batch_size, n_steps, embedding_size)
-        input = tf.compat.v1.placeholder(tf.float32, [
-                                         self.batch_size, self.num_steps, self.input_dimension_size], name='inputs')  # input
-
-        # prediction_target has shape (batch_size, n_steps-1, embedding_size) # TODO why -1?
-        prediction_target = tf.compat.v1.placeholder(tf.float32, [
-                                                     self.batch_size, self.num_steps - 1, self.input_dimension_size], name='prediction_target')
-        mask = tf.compat.v1.placeholder(tf.float32, [
-                                        self.batch_size, self.num_steps - 1, self.input_dimension_size], name='mask')
-
-        # label_target has shape (batch_size, self.class_num) # likes one-hot
-        label_target = tf.compat.v1.placeholder(
-            tf.float32, [self.batch_size, self.class_num], name='label_target')
-
-        # dropout for rnn
-        lstm_keep_prob = tf.compat.v1.placeholder(
-            tf.float32, [], name='lstm_keep_prob')
-        classfication_keep_prob = tf.compat.v1.placeholder(
-            tf.float32, [], name='classification_keep_prob')
-
+        # self.name = 'Generator_LSTM'
         with tf.compat.v1.variable_scope(self.name):
             # project layer weight W and bias
-            W = tf.Variable(tf.random.truncated_normal(
+            self.W = tf.Variable(tf.random.truncated_normal(
                 [self.hidden_size, self.input_dimension_size], stddev=0.1), dtype=tf.float32, name='Project_W')
-            bias = tf.Variable(tf.constant(
+            self.bias = tf.Variable(tf.constant(
                 0.1, shape=[self.input_dimension_size]), dtype=tf.float32, name='Project_bias')
 
             # construct cells with the specific layer_num
-            mulrnn_cell = tf.keras.layers.StackedRNNCells([RNN_cell(
-                type=self.cell_type, hidden_size=self.hidden_size, keep_prob=lstm_keep_prob) for _ in range(self.layer_num)])
+            self.mulrnn_cell = tf.keras.layers.StackedRNNCells([RNN_cell(
+                type=self.cell_type, hidden_size=self.hidden_size, keep_prob=1.0) for _ in range(self.layer_num)])
+
+        self.dense1 = layers.Dense(self.class_num)
+
+    @tf.compat.v1.keras.utils.track_tf1_style_variables
+    def call(self, data):
+
+        input, prediction_target, mask, label_target = data
+
+        lstm_keep_prob, classfication_keep_prob = 1.0, 1.0
+
+        # print('Generator: INPUT:SHAPE', input.shape)
+
+        # # input has shape (batch_size, n_steps, embedding_size)
+        # input = tf.compat.v1.placeholder(tf.float32, [
+        #                                  self.batch_size, self.num_steps, self.input_dimension_size], name='inputs')  # input
+
+        # # prediction_target has shape (batch_size, n_steps-1, embedding_size) # TODO why -1?
+        # prediction_target = tf.compat.v1.placeholder(tf.float32, [
+        #                                              self.batch_size, self.num_steps - 1, self.input_dimension_size], name='prediction_target')
+        # mask = tf.compat.v1.placeholder(tf.float32, [
+        #                                 self.batch_size, self.num_steps - 1, self.input_dimension_size], name='mask')
+
+        # # label_target has shape (batch_size, self.class_num) # likes one-hot
+        # label_target = tf.compat.v1.placeholder(
+        #     tf.float32, [self.batch_size, self.class_num], name='label_target')
+
+        # # dropout for rnn
+        # lstm_keep_prob = tf.compat.v1.placeholder(
+        #     tf.float32, [], name='lstm_keep_prob')
+        # classfication_keep_prob = tf.compat.v1.placeholder(
+        #     tf.float32, [], name='classification_keep_prob')
+
+        with tf.compat.v1.variable_scope(self.name):
+            # project layer weight W and bias
+            # W = tf.Variable(tf.random.truncated_normal(
+            #     [self.hidden_size, self.input_dimension_size], stddev=0.1), dtype=tf.float32, name='Project_W')
+            # bias = tf.Variable(tf.constant(
+            #     0.1, shape=[self.input_dimension_size]), dtype=tf.float32, name='Project_bias')
+
+            # construct cells with the specific layer_num
+            # mulrnn_cell = tf.keras.layers.StackedRNNCells([RNN_cell(
+            #     type=self.cell_type, hidden_size=self.hidden_size, keep_prob=lstm_keep_prob) for _ in range(self.layer_num)])
 
             # initialize state to zero
-            init_state = mulrnn_cell.get_initial_state(
+            init_state = self.mulrnn_cell.get_initial_state(
                 batch_size=self.batch_size, dtype=tf.float32)
             state = init_state
 
@@ -96,7 +116,7 @@ class Generator(object):
                     if time_step > 0:
                         tf.compat.v1.get_variable_scope().reuse_variables()
                     if time_step == 0:
-                        (cell_output, state) = mulrnn_cell(
+                        (cell_output, state) = self.mulrnn_cell(
                             input[:, time_step, :], state)
                         outputs.append(cell_output)
                     else:
@@ -104,11 +124,12 @@ class Generator(object):
                         comparison = tf.equal(
                             input[:, time_step, :], tf.constant(Missing_value))
                         current_prediction_output = tf.matmul(
-                            outputs[time_step - 1], W) + bias
+                            outputs[time_step - 1], self.W) + self.bias
                         # change the current_input, select current_prediction_output when 1 (missing) or use input when 0 (not missing)
                         current_input = tf.where(
                             comparison, current_prediction_output, input[:, time_step, :])
-                        (cell_output, state) = mulrnn_cell(current_input, state)
+                        (cell_output, state) = self.mulrnn_cell(
+                            current_input, state)
                         outputs.append(cell_output)
 
             # label_target_hidden_output has the last_time_step of shape (batch_size, hidden_size)
@@ -123,7 +144,7 @@ class Generator(object):
 
             # prediction has shape (batch * (numsteps - 1), self.input_dimension_size)
             prediction = tf.add(
-                tf.matmul(prediction_hidden_output, W), bias, name='prediction')
+                tf.matmul(prediction_hidden_output, self.W), self.bias, name='prediction')
 
             # reshape prediction_target and corresponding mask  into [batch * (numsteps-1), hidden_size]
             prediction_targets = tf.reshape(
@@ -132,7 +153,9 @@ class Generator(object):
 
             #  softmax for the label_prediction, label_logits has shape (batch_size, self.class_num)
             with tf.compat.v1.variable_scope('Softmax_layer'):
-                label_logits = layers.Dense(self.class_num)(
+                # label_logits = layers.Dense(self.class_num)(
+                #     label_target_hidden_output)
+                label_logits = self.dense1(
                     label_target_hidden_output)
                 loss_classficiation = tf.nn.softmax_cross_entropy_with_logits(
                     labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classficiation')
@@ -156,14 +179,14 @@ class Generator(object):
             tf.argmax(input=label_predict, axis=1), tf.argmax(input=label_target, axis=1))
         accuracy = tf.cast(correct_predictions, tf.float32, name='accuracy')
 
-        input_tensors = {
-            'input': input,
-            'prediction_target': prediction_target,
-            'mask': mask,
-            'label_target': label_target,
-            'lstm_keep_prob': lstm_keep_prob,
-            'classfication_keep_prob': classfication_keep_prob
-        }
+        # input_tensors = {
+        #     'input': input,
+        #     'prediction_target': prediction_target,
+        #     'mask': mask,
+        #     'label_target': label_target,
+        #     'lstm_keep_prob': lstm_keep_prob,
+        #     'classfication_keep_prob': classfication_keep_prob
+        # }
 
         loss_tensors = {
             'loss_prediction': loss_prediction,
@@ -177,7 +200,11 @@ class Generator(object):
         M = tf.reshape(mask, [-1, (self.num_steps - 1)
                        * self.input_dimension_size])
 
-        return input_tensors, loss_tensors, accuracy, prediction_res, M, label_predict, tf.reshape(prediction_targets, [-1, (self.num_steps - 1)*self.input_dimension_size]), label_target_hidden_output
+        prediction_target_res = tf.reshape(
+            prediction_targets, [-1, (self.num_steps - 1)*self.input_dimension_size])
+
+        # return input_tensors, loss_tensors, accuracy, prediction_res, M, label_predict, tf.reshape(prediction_targets, [-1, (self.num_steps - 1)*self.input_dimension_size]), label_target_hidden_output
+        return loss_tensors, accuracy, prediction_res, M, label_predict, prediction_target_res, label_target_hidden_output
 
     @property
     def vars(self):
@@ -187,13 +214,17 @@ class Generator(object):
 class Discriminator(layers.Layer):
     def __init__(self, config, *args, **kwargs):
         super().__init__(name='Discriminator', *args, **kwargs, )
+        units = config.num_steps
+        self.l1 = layers.Dense(units, activation='tanh')
+        self.l2 = layers.Dense(int(units)//2, activation='tanh')
+        self.l3 = layers.Dense(units, activation='sigmoid')
 
     @tf.compat.v1.keras.utils.track_tf1_style_variables
     def call(self, x):
         with tf.compat.v1.variable_scope(self.name):
-            out = layers.Dense(x.shape[1], activation='tanh')(x)
-            out = layers.Dense(int(x.shape[1])//2, activation='tanh')(out)
-            out = layers.Dense(x.shape[1], activation='sigmoid')(out)
+            out = self.l1(x)
+            out = self.l2(out)
+            out = self.l3(out)
         return out
 
     @property
@@ -201,7 +232,110 @@ class Discriminator(layers.Layer):
         return [var for var in tf.compat.v1.global_variables() if self.name in var.name]
 
 
+class AJRNN(tf.keras.Model):
+    def __init__(self, config, *args, **kwargs):
+        super().__init__(name='AJRNN', *args, **kwargs)
+        self.config = config
+        self.generator = Generator(config)
+        self.discriminator = Discriminator(config)
+        self.gen_loss_tracker = tf.keras.metrics.Mean(name="generator_loss")
+        self.disc_loss_tracker = tf.keras.metrics.Mean(
+            name="discriminator_loss")
+
+    @property
+    def metrics(self):
+        return [self.gen_loss_tracker, self.disc_loss_tracker]
+
+    def compile(self, d_optimizer, g_optimizer, loss_fn):
+        super(AJRNN, self).compile()
+        self.d_optimizer = d_optimizer
+        self.g_optimizer = g_optimizer
+        self.loss_fn = loss_fn
+
+    def train_step(self, data):
+        #input, prediction_target, mask, label_target = data
+
+        loss_tensors, accuracy, prediction, M, label_predict, prediction_target, label_target_hidden_output = self.generator(
+            data)
+        real_pre = prediction * (1 - M) + prediction_target * M
+        real_pre = tf.reshape(
+            real_pre, [self.config.batch_size, (self.config.num_steps-1)*self.config.input_dimension_size])
+
+        predict_M = self.discriminator(real_pre)
+        print(predict_M)
+
+        predict_M = tf.reshape(
+            predict_M, [-1, (self.config.num_steps-1)*self.config.input_dimension_size])
+        print(predict_M)
+
+        D_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=predict_M, labels=M))
+        G_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=predict_M, labels=1 - M) * (1-M))
+
+        total_G_loss = loss_tensors['loss'] + self.config.lamda_D * G_loss
+
+        self.d_optimizer.minimize(D_loss, var_list=self.discriminator.vars)
+        self.g_optimizer.minimize(total_G_loss, var_list=self.generator.vars)
+
+        # Discriminator training
+        # for _ in range(self.config.D_epoch):
+
+        # with tf.GradientTape() as tape:
+        #     predictions = self.discriminator(input)
+        #     d_loss = self.loss_fn(input, predictions)
+        #     print(predictions)
+        #     print(d_loss)
+        # grads = tape.gradient(d_loss, self.discriminator.trainable_weights)
+        # self.d_optimizer.apply_gradients(
+        #     zip(grads, self.discriminator.trainable_weights)
+        # )
+        # print(self.discriminator.trainable_weights)
+
+        return {
+            "g_loss": self.gen_loss_tracker.result(),
+            "d_loss": self.disc_loss_tracker.result(),
+        }
+
+
 def main(config):
+    print('Loading data && Transform data--------------------')
+    print(config.train_data_filename)
+    # train_data, train_label = utils.load_data(config.train_data_filename)
+
+    # # For univariate
+    # config.num_steps = train_data.shape[1]
+    # config.input_dimension_size = 1
+
+    # train_label, num_classes = utils.transfer_labels(train_label)
+    # config.class_num = num_classes
+    dataset, num_classes, num_steps = utils.load_dataset(
+        config.train_data_filename)
+
+    config.class_num = num_classes
+    # For univariate
+    config.num_steps = num_steps
+    config.input_dimension_size = 1
+
+    # print('Train Label:', np.unique(train_label))
+    print('Train data completed-------------')
+
+    model = AJRNN(config)
+    model.compile(d_optimizer=tf.keras.optimizers.Adam(config.learning_rate),
+                  g_optimizer=tf.keras.optimizers.Adam(config.learning_rate),
+                  loss_fn=tf.keras.losses.BinaryCrossentropy(from_logits=True))
+
+    # model.fit(train_data, train_label, epochs=config.epoch)
+    dataset = dataset.shuffle(55).batch(config.batch_size)
+    model.fit(dataset, epochs=1, batch_size=config.batch_size)
+
+    # test_data, test_labels = utils.load_data(config.test_data_filename)
+
+    # test_label, test_classes = utils.transfer_labels(test_labels)
+    # print('Test data completed-------------')
+
+
+def old_main(config):
     # os.environ['CUDA_VISIBLE_DEVICES'] = config.GPU
     # gpu_config = tf.compat.v1.ConfigProto()
     # gpu_config.gpu_options.allow_growth = True
