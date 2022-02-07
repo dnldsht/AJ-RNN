@@ -107,7 +107,7 @@ class Generator(object):
                         current_prediction_output = tf.matmul(
                             outputs[time_step - 1], W) + bias
                         # change the current_input, select current_prediction_output when 1 (missing) or use input when 0 (not missing)
-                        current_input = tf.compat.v1.where(
+                        current_input = tf.where(
                             comparison, current_prediction_output, input[:, time_step, :])
                         (cell_output, state) = mulrnn_cell(current_input, state)
                         outputs.append(cell_output)
