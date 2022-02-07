@@ -38,9 +38,10 @@ def RNN_cell(type, hidden_size, keep_prob):
     return cell
 
 
-class Generator(object):
+class Generator(layers.Layer):
 
-    def __init__(self, config):
+    def __init__(self, config, *args, **kwargs):
+        super().__init__(name='Generator_LSTM', *args, **kwargs, )
         self.batch_size = config.batch_size  # configurable
         self.hidden_size = config.hidden_size  # congigurable for GRU/LSTM
         self.num_steps = config.num_steps  # length of input array
@@ -50,7 +51,7 @@ class Generator(object):
         self.lamda = config.lamda  # coefficient that balances the prediction loss
         self.class_num = config.class_num  # number of targes
         self.layer_num = config.layer_num  # number of layers of AJRNN
-        self.name = 'Generator_LSTM'
+        #self.name = 'Generator_LSTM'
 
     def build_model(self):
 
@@ -73,6 +74,7 @@ class Generator(object):
             tf.float32, [], name='lstm_keep_prob')
         classfication_keep_prob = tf.compat.v1.placeholder(
             tf.float32, [], name='classification_keep_prob')
+
         with tf.compat.v1.variable_scope(self.name):
             # project layer weight W and bias
             W = tf.Variable(tf.random.truncated_normal(
@@ -258,17 +260,6 @@ def main(config):
         # global_variables_initializer
         sess.run(tf.compat.v1.global_variables_initializer())
 
-        # Tensorboard
-        # writer = tf.compat.v1.summary.FileWriter(
-        #     logdir, graph=None, max_queue=10, flush_secs=120, graph_def=None,
-        #     filename_suffix=None, session=sess
-        # )
-        # writer.add_graph(sess.graph)
-        # writer.flush()
-        if config.save is not None:
-            saver = tf.compat.v1.train.Saver(max_to_keep=3)
-
-
 # ------------------------------------------------train---------------------------------------------------
         Epoch = config.epoch
 
@@ -297,15 +288,6 @@ def main(config):
 
             print("Loss:", np.mean(total_loss), "Train acc:",
                   np.mean(np.array(total_train_accuracy).reshape(-1)))
-            # Tensorboard
-            # tf.summary.trace_export(
-            #  name="train_acc",
-            #  step=i,
-            #  profiler_outdir=logdir)
-
-            if config.save is not None and i % 100 == 0:
-                # Append the step number to the checkpoint name:
-                saver.save(sess, config.save, global_step=i)
 
         '''test'''
         total_test_accuracy = []
