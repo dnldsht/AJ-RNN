@@ -5,6 +5,7 @@ import utils
 import os
 import numpy as np
 import argparse
+from tensorflow.keras import layers
 
 tf.compat.v1.disable_eager_execution()
 
@@ -180,18 +181,20 @@ class Generator(object):
         return [var for var in tf.compat.v1.global_variables() if self.name in var.name]
 
 
-class Discriminator(object):
-    def __init__(self, config):
-        self.name = "Discriminator"
+class Discriminator(layers.Layer):
+    def __init__(self, config, *args, **kwargs):
+        super().__init__(name='Discriminator', *args, **kwargs, )
+        units = config.num_steps - 1
+        self.l1 = layers.Dense(units, activation='tanh')
+        self.l2 = layers.Dense(int(units)//2, activation='tanh')
+        self.l3 = layers.Dense(units, activation='sigmoid')
 
+    @tf.compat.v1.keras.utils.track_tf1_style_variables
     def __call__(self, x):
-        with tf.compat.v1.variable_scope(self.name) as vs:
-            x1 = slim.legacy_fully_connected(
-                x=x, num_output_units=x.shape[1], activation_fn=tf.nn.tanh)
-            x2 = slim.legacy_fully_connected(x=x1, num_output_units=int(
-                x.shape[1])//2, activation_fn=tf.nn.tanh)
-            predict_mask = slim.legacy_fully_connected(
-                x=x2, num_output_units=x.shape[1], activation_fn=tf.nn.sigmoid)
+        with tf.compat.v1.variable_scope(self.name):
+            x1 = self.l1(x)
+            x2 = self.l2(x1)
+            predict_mask = self.l3(x2)
         return predict_mask
 
     @property
