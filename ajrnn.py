@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import tensorflow as tf
-import tf_slim as slim
 import utils
 import os
 import numpy as np
@@ -136,8 +135,8 @@ class Generator(layers.Layer):
 
             #  softmax for the label_prediction, label_logits has shape (batch_size, self.class_num)
             with tf.compat.v1.variable_scope('Softmax_layer'):
-                label_logits = slim.legacy_fully_connected(
-                    x=label_target_hidden_output, num_output_units=self.class_num)
+                label_logits = layers.Dense(self.class_num)(
+                    label_target_hidden_output)
                 loss_classficiation = tf.nn.softmax_cross_entropy_with_logits(
                     labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classficiation')
 
@@ -205,6 +204,93 @@ class Discriminator(layers.Layer):
 
 
 def main(config):
+
+    print('Loading data && Transform data--------------------')
+    print(config.train_data_filename)
+    train_data, train_label = utils.load_data(config.train_data_filename)
+
+    # For univariate
+    config.num_steps = train_data.shape[1]
+    config.input_dimension_size = 1
+
+    train_label, num_classes = utils.transfer_labels(train_label)
+    config.class_num = num_classes
+
+    print('Train Label:', np.unique(train_label))
+    print('Train data completed-------------')
+
+    test_data, test_labels = utils.load_data(config.test_data_filename)
+
+    test_label, test_classes = utils.transfer_labels(test_labels)
+    print('Test data completed-------------')
+    train(config, train_data, train_label)
+
+
+def train(config, train_data,  train_label):
+
+    with tf.compat.v1.Session() as sess:
+
+        G = Generator(config=config)
+        input_tensors, loss_tensors, accuracy, prediction, M, Label_predict, prediction_target, Last_hidden_output = G.build_model()
+
+        real_pre = prediction * (1 - M) + prediction_target * M
+        real_pre = tf.reshape(
+            real_pre, [config.batch_size, (config.num_steps-1)*config.input_dimension_size])
+        D = Discriminator(config)
+        predict_M = D(real_pre)
+
+        predict_M = tf.reshape(
+            predict_M, [-1, (config.num_steps-1)*config.input_dimension_size])
+
+        D_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=predict_M, labels=M))
+        G_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=predict_M, labels=1 - M) * (1-M))
+
+        total_G_loss = loss_tensors['loss'] + config.lamda_D * G_loss
+
+        # D_solver
+        D_solver = tf.compat.v1.train.AdamOptimizer(
+            config.learning_rate).minimize(D_loss, var_list=D.vars)
+
+        # G_solver
+        G_solver = tf.compat.v1.train.AdamOptimizer(
+            config.learning_rate).minimize(total_G_loss, var_list=G.vars)
+
+        # global_variables_initializer
+        sess.run(tf.compat.v1.global_variables_initializer())
+
+# ------------------------------------------------train---------------------------------------------------
+        Epoch = config.epoch
+
+        for i in range(Epoch):
+            total_loss = []
+            total_batch_d_loss = []
+            total_batch_g_loss = []
+            total_train_accuracy = []
+
+            print('----------Epoch %d----------' % i)
+
+            '''train'''
+            for input, prediction_target, mask, label_target, _, batch_need_label in utils.next_batch(config.batch_size, train_data, train_label, True, config.input_dimension_size, config.num_steps, Trainable=True):
+                for _ in range(config.D_epoch):
+                    _, batch_d_loss, p_M, real_M = sess.run([D_solver, D_loss, predict_M, M], feed_dict={input_tensors['input']: input, input_tensors['prediction_target']: prediction_target,
+                                                                                                         input_tensors['mask']: mask, input_tensors['label_target']: label_target,
+                                                                                                         input_tensors['lstm_keep_prob']: 1.0, input_tensors['classfication_keep_prob']: 1.0})
+                total_batch_d_loss.append(batch_d_loss)
+                for _ in range(config.G_epoch):
+                    batch_loss, batch_g_loss, batch_accuracy, _, batch_train_Pre, batch_train_hidden = sess.run([loss_tensors['loss'], G_loss, accuracy, G_solver, prediction, Last_hidden_output], feed_dict={input_tensors['input']: input, input_tensors['prediction_target']: prediction_target,
+                                                                                                                                                                                                               input_tensors['mask']: mask, input_tensors['label_target']: label_target,
+                                                                                                                                                                                                               input_tensors['lstm_keep_prob']: 1.0, input_tensors['classfication_keep_prob']: 1.0})
+                total_loss.append(batch_loss)
+                total_batch_g_loss.append(batch_g_loss)
+                total_train_accuracy.append(batch_accuracy)
+
+            print("Loss:", np.mean(total_loss), "Train acc:",
+                  np.mean(np.array(total_train_accuracy).reshape(-1)))
+
+
+def old_main(config):
     os.environ['CUDA_VISIBLE_DEVICES'] = config.GPU
     gpu_config = tf.compat.v1.ConfigProto()
     gpu_config.gpu_options.allow_growth = True
