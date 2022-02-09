@@ -272,7 +272,7 @@ class AJRNN(layers.Layer):
 
             return accuracy, loss_tensors['loss']
 
-    def fit(self, train_data, train_label):
+    def fit(self, train_data, train_label, test_data, test_label):
         for i in range(self.config.epoch):
             total_loss = []
             total_train_accuracy = []
@@ -298,6 +298,8 @@ class AJRNN(layers.Layer):
             print("Loss:", np.mean(total_loss), "Train acc:",
                   np.mean(np.array(total_train_accuracy).reshape(-1)))
             print()
+            if i % 10 == 0 and i > 0:
+                self.test(test_data, test_label)
 
     def test(self, test_data, test_label):
         total_test_accuracy = []
@@ -333,18 +335,18 @@ def main(config):
 
     print('Train Label:', np.unique(train_label))
     print('Train data completed-------------')
-
-    model = AJRNN(config)
-    try:
-        model.fit(train_data, train_label)
-    except:
-        pass
-
     test_data, test_labels = utils.load_data(config.test_data_filename)
 
     test_label, test_classes = utils.transfer_labels(test_labels)
     print('Test data completed-------------')
-    model.test(test_data, test_labels)
+
+    model = AJRNN(config)
+    try:
+        model.fit(train_data, train_label, test_data, test_label)
+    except:
+        pass
+
+    model.test(test_data, test_label)
 
 
 # ------------------------------------------------train---------------------------------------------------
