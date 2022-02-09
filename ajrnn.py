@@ -155,8 +155,10 @@ class Generator(layers.Layer):
             with tf.compat.v1.variable_scope('Softmax_layer'):
                 # label_logits = layers.Dense(self.class_num)(
                 #     label_target_hidden_output)
-                label_logits = self.dense1(
-                    label_target_hidden_output)
+                # print('Softmax_layer')
+                #print(self.class_num, label_target_hidden_output)
+                label_logits = self.dense1(label_target_hidden_output)
+                # print(label_logits)
                 loss_classficiation = tf.nn.softmax_cross_entropy_with_logits(
                     labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classficiation')
 
@@ -175,8 +177,11 @@ class Generator(layers.Layer):
 
         # for get the classfication accuracy, label_predict has shape (batch_size, self.class_num)
         label_predict = tf.nn.softmax(label_logits, name='test_probab')
+        # TODO check if this is correct!
+        # correct_predictions = tf.equal(
+        #    tf.argmax(input=label_predict, axis=1), tf.argmax(input=label_target, axis=1))
         correct_predictions = tf.equal(
-            tf.argmax(input=label_predict, axis=1), tf.argmax(input=label_target, axis=1))
+            tf.argmax(label_predict, -1), tf.argmax(label_target, -1))
         accuracy = tf.cast(correct_predictions, tf.float32, name='accuracy')
 
         # input_tensors = {
@@ -214,7 +219,7 @@ class Generator(layers.Layer):
 class Discriminator(layers.Layer):
     def __init__(self, config, *args, **kwargs):
         super().__init__(name='Discriminator', *args, **kwargs, )
-        units = config.num_steps
+        units = config.num_steps - 1
         self.l1 = layers.Dense(units, activation='tanh')
         self.l2 = layers.Dense(int(units)//2, activation='tanh')
         self.l3 = layers.Dense(units, activation='sigmoid')
@@ -238,13 +243,12 @@ class AJRNN(tf.keras.Model):
         self.config = config
         self.generator = Generator(config)
         self.discriminator = Discriminator(config)
-        self.gen_loss_tracker = tf.keras.metrics.Mean(name="generator_loss")
-        self.disc_loss_tracker = tf.keras.metrics.Mean(
-            name="discriminator_loss")
+        self.mloss = tf.keras.metrics.Mean(name="mloss")
+        self.maccuracy = tf.keras.metrics.Mean(name="maccuracy")
 
     @property
     def metrics(self):
-        return [self.gen_loss_tracker, self.disc_loss_tracker]
+        return [self.mloss, self.maccuracy]
 
     def compile(self, d_optimizer, g_optimizer, loss_fn):
         super(AJRNN, self).compile()
@@ -254,29 +258,35 @@ class AJRNN(tf.keras.Model):
 
     def train_step(self, data):
         #input, prediction_target, mask, label_target = data
+        with tf.GradientTape(persistent=True) as tape:
+            loss_tensors, accuracy, prediction, M, label_predict, prediction_target, label_target_hidden_output = self.generator(
+                data)
 
-        loss_tensors, accuracy, prediction, M, label_predict, prediction_target, label_target_hidden_output = self.generator(
-            data)
-        real_pre = prediction * (1 - M) + prediction_target * M
-        real_pre = tf.reshape(
-            real_pre, [self.config.batch_size, (self.config.num_steps-1)*self.config.input_dimension_size])
+            real_pre = prediction * (1 - M) + prediction_target * M
+            real_pre = tf.reshape(
+                real_pre, [self.config.batch_size, (self.config.num_steps-1)*self.config.input_dimension_size])
 
-        predict_M = self.discriminator(real_pre)
-        print(predict_M)
+            predict_M = self.discriminator(real_pre)
 
-        predict_M = tf.reshape(
-            predict_M, [-1, (self.config.num_steps-1)*self.config.input_dimension_size])
-        print(predict_M)
+            predict_M = tf.reshape(
+                predict_M, [-1, (self.config.num_steps-1)*self.config.input_dimension_size])
 
-        D_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=predict_M, labels=M))
-        G_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=predict_M, labels=1 - M) * (1-M))
+            D_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=predict_M, labels=M))
+            G_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=predict_M, labels=1 - M) * (1-M))
 
-        total_G_loss = loss_tensors['loss'] + self.config.lamda_D * G_loss
+            total_G_loss = loss_tensors['loss'] + self.config.lamda_D * G_loss
 
-        self.d_optimizer.minimize(D_loss, var_list=self.discriminator.vars)
-        self.g_optimizer.minimize(total_G_loss, var_list=self.generator.vars)
+        self.d_optimizer.minimize(
+            D_loss, var_list=self.discriminator.vars, tape=tape)
+        self.g_optimizer.minimize(
+            total_G_loss, var_list=self.generator.vars, tape=tape)
+
+        print("METRICS")
+        print(np.mean(loss_tensors['loss']), accuracy)
+        self.mloss.update_state(np.mean(loss_tensors['loss']))
+        self.maccuracy.update_state(accuracy)
 
         # Discriminator training
         # for _ in range(self.config.D_epoch):
@@ -293,8 +303,8 @@ class AJRNN(tf.keras.Model):
         # print(self.discriminator.trainable_weights)
 
         return {
-            "g_loss": self.gen_loss_tracker.result(),
-            "d_loss": self.disc_loss_tracker.result(),
+            "mloss": self.mloss.result(),
+            "maccuracy": self.maccuracy.result(),
         }
 
 
@@ -326,8 +336,10 @@ def main(config):
                   loss_fn=tf.keras.losses.BinaryCrossentropy(from_logits=True))
 
     # model.fit(train_data, train_label, epochs=config.epoch)
-    dataset = dataset.shuffle(55).batch(config.batch_size)
-    model.fit(dataset, epochs=1, batch_size=config.batch_size)
+    dataset = dataset.shuffle(10).batch(
+        config.batch_size, drop_remainder=True)
+    #dataset = dataset.repeat()
+    model.fit(dataset, epochs=50, batch_size=config.batch_size)
 
     # test_data, test_labels = utils.load_data(config.test_data_filename)
 
