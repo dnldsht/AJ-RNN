@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
-from re import T
-from statistics import mode
+
 import tensorflow as tf
 import utils
-import os
 import numpy as np
 import argparse
 from tensorflow.keras import layers
-
-# tf.compat.v1.disable_eager_execution()
-
-Missing_value = 128.0
+from utils import MISSING_VALUE
 
 
 class Config(object):
@@ -122,7 +117,7 @@ class Generator(layers.Layer):
                     else:
                         # comparison has shape (batch_size, self.input_dimension_size) with elements 1 (means missing) when equal or 0 (not missing) otherwise
                         comparison = tf.equal(
-                            input[:, time_step, :], tf.constant(Missing_value))
+                            input[:, time_step, :], tf.constant(MISSING_VALUE))
                         current_prediction_output = tf.matmul(
                             outputs[time_step - 1], self.W) + self.bias
                         # change the current_input, select current_prediction_output when 1 (missing) or use input when 0 (not missing)

@@ -2,6 +2,7 @@
 import numpy as np
 import copy
 import tensorflow as tf
+MISSING_VALUE = 128.0
 
 
 def transfer_labels(labels):
@@ -42,7 +43,7 @@ def convertToOneHot(vector, num_classes=None):
 
 def next_batch(batch_size, data, label, end_to_end, input_dimension_size, num_step, Trainable):
     if end_to_end:
-        data[np.where(np.isnan(data))] = 128
+        data[np.where(np.isnan(data))] = MISSING_VALUE
     need_label = copy.deepcopy(label)
     label = convertToOneHot(label, num_classes=len(np.unique(label)))
     assert data.shape[0] == label.shape[0]
@@ -67,7 +68,7 @@ def next_batch(batch_size, data, label, end_to_end, input_dimension_size, num_st
         batch_prediction_target = rand_data[i *
                                             batch_size: (i+1)*batch_size, input_dimension_size:]
         mask = np.ones_like(batch_prediction_target)
-        mask[np.where(batch_prediction_target == 128)] = 0
+        mask[np.where(batch_prediction_target == MISSING_VALUE)] = 0
         batch_label = rand_label[i*batch_size: (i+1)*batch_size, :]
         batch_need_label = need_rand_label[i*batch_size: (i+1)*batch_size]
         yield (batch_input.reshape(-1, num_step, input_dimension_size), batch_prediction_target.reshape(-1, num_step - 1, input_dimension_size), mask.reshape(-1, num_step - 1, input_dimension_size), batch_label, batch_size, batch_need_label)
@@ -84,7 +85,7 @@ def next_batch(batch_size, data, label, end_to_end, input_dimension_size, num_st
         assert batch_input.shape[1] - \
             input_dimension_size == batch_prediction_target.shape[1]
         mask = np.ones_like(batch_prediction_target)
-        mask[np.where(batch_prediction_target == 128)] = 0
+        mask[np.where(batch_prediction_target == MISSING_VALUE)] = 0
         batch_label = np.concatenate(
             (rand_label[-left_row:, :], rand_label[need_more]), axis=0)
         batch_need_label = np.concatenate(
@@ -94,14 +95,14 @@ def next_batch(batch_size, data, label, end_to_end, input_dimension_size, num_st
 
 def load_dataset(filename, extra=False):
     data, labels = load_data(filename)
-    data[np.where(np.isnan(data))] = 128
+    data[np.where(np.isnan(data))] = MISSING_VALUE
     num_steps = data.shape[1]
 
     labels, num_classes = transfer_labels(labels)
     labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
     prediction_target = data[:, 1:]
     mask = np.ones_like(prediction_target)
-    mask[np.where(prediction_target == 128)] = 0
+    mask[np.where(prediction_target == MISSING_VALUE)] = 0
 
     data = data.reshape(-1, num_steps, 1)
     prediction_target = prediction_target.reshape(-1, num_steps - 1, 1)
