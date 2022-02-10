@@ -248,6 +248,18 @@ class AJRNN(tf.keras.Model):
 
         return {'loss': batch_loss, 'accuracy': batch_accuracy}
 
+    @tf.function
+    def test_step(self, data):
+        input, prediction_target, mask, label_target = data
+
+        loss_tensors, accuracy, prediction, M, label_predict, prediction_target, last_hidden_output = self.generator(
+            input, prediction_target, mask, label_target)
+
+        # batch_loss, batch_accuracy = self.generator_step(
+        #     input, prediction_target, mask, label_target)
+
+        return {'loss': loss_tensors['loss'], 'accuracy': accuracy}
+
     # def fit(self, dataset):
     #     for i in range(self.config.epoch):
     #         total_loss = []
@@ -294,17 +306,17 @@ def main(config):
     config.input_dimension_size = 1
     config.class_num = num_classes
 
-    # print(f"Testing w/ {config.test_data_filename}")
-    # test_dataset = utils.load_dataset(config.test_data_filename).batch(
-    #     config.batch_size, drop_remainder=True)
+    print(f"Testing w/ {config.test_data_filename}")
+    test_dataset = utils.load_dataset(config.test_data_filename).batch(
+        config.batch_size, drop_remainder=True)
 
     model = AJRNN(config)
     model.compile()
     train_dataset = train_dataset.shuffle(10).batch(
         config.batch_size, drop_remainder=True)
-    model.fit(train_dataset, epochs=config.epoch)
-
-    # model.test(test_dataset)
+    model.fit(train_dataset, epochs=config.epoch,
+              validation_data=test_dataset,  validation_freq=5)
+    # model.evaluate(test_dataset)
 
 
 if __name__ == "__main__":
