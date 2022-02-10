@@ -78,7 +78,8 @@ class Generator(layers.Layer):
             with tf.compat.v1.variable_scope("RNN"):
                 for time_step in range(self.num_steps):
                     if time_step > 0:
-                        tf.compat.v1.get_variable_scope().reuse_variables()
+                        pass
+                        # tf.compat.v1.get_variable_scope().reuse_variables()
                     if time_step == 0:
                         (cell_output, state) = self.mulrnn_cell(
                             input[:, time_step, :], state)
@@ -255,43 +256,7 @@ class AJRNN(tf.keras.Model):
         loss_tensors, accuracy, prediction, M, label_predict, prediction_target, last_hidden_output = self.generator(
             input, prediction_target, mask, label_target)
 
-        # batch_loss, batch_accuracy = self.generator_step(
-        #     input, prediction_target, mask, label_target)
-
         return {'loss': loss_tensors['loss'], 'accuracy': accuracy}
-
-    # def fit(self, dataset):
-    #     for i in range(self.config.epoch):
-    #         total_loss = []
-    #         total_train_accuracy = []
-
-    #         print('----------Epoch %d----------' % i)
-
-    #         for input, prediction_target, mask, label_target in dataset:
-    #             batch_accuracy, batch_loss = self.train_step(
-    #                 input, prediction_target, mask, label_target)
-
-    #             total_loss.append(batch_loss)
-    #             total_train_accuracy.append(batch_accuracy)
-    #         print("Loss:", np.mean(total_loss), "Train acc:",
-    #               np.mean(np.array(total_train_accuracy).reshape(-1)))
-
-        # if test_dataset and i % 10 == 0 and i > 0:
-        #     self.test(test_dataset)
-
-    # def test(self, dataset):
-    #     total_test_accuracy = []
-
-    #     for input, prediction_target, mask, label_target in dataset:
-
-    #         batch_accuracy, batch_loss = self.train_step(
-    #             input, prediction_target, mask, label_target, tf.Variable(False), tf.Variable(False))
-    #         total_test_accuracy.append(batch_accuracy)
-
-    #     test_acc = np.mean(
-    #         np.array(total_test_accuracy).reshape(-1))
-
-    #     print('Test acc:', test_acc)
 
 
 def main(config):
@@ -312,11 +277,17 @@ def main(config):
 
     model = AJRNN(config)
     model.compile()
+
+    # shape = [s.shape for s in train_dataset.element_spec]
+    # print(shape)
+    # model.build(shape)
+    # model.summary()
+
     train_dataset = train_dataset.shuffle(10).batch(
         config.batch_size, drop_remainder=True)
+
     model.fit(train_dataset, epochs=config.epoch,
               validation_data=test_dataset,  validation_freq=5)
-    # model.evaluate(test_dataset)
 
 
 if __name__ == "__main__":
