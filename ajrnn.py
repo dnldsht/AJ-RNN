@@ -287,7 +287,7 @@ def main(config):
         config.batch_size, drop_remainder=True)
 
     model.fit(train_dataset, epochs=config.epoch,
-              validation_data=test_dataset,  validation_freq=5)
+              validation_data=test_dataset,  validation_freq=50)
 
 
 if __name__ == "__main__":

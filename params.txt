@@ -1,0 +1,15 @@
+class Config(object):
+    layer_num = 1
+    hidden_size = 100
+    learning_rate = 1e-3
+    cell_type = 'GRU'
+    lamda = 1
+    D_epoch = 1
+    GPU = '0'
+    '''User defined'''
+    batch_size = None   # 20
+    epoch = None    # 600
+    lamda_D = None  # 1 if missing_ratio <= 0.4 else 0.1
+    G_epoch = None  # 5 if missing_ratio <= 0.4 else 1
+    train_data_filename = None
+    test_data_filename = None

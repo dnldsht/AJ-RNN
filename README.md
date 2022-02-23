@@ -40,3 +40,4 @@ number={},
 pages={1-1},  
 doi={10.1109/TPAMI.2020.3027975}}
 ```
+$ python ajrnn.py --batch_size 20 --epoch 600 --lamda_D 1 --G_epoch 5 --train_data_filename results/data/Two_Patterns/Two_Patterns_TRAIN_20.csv --test_data_filename results/data/Two_Patterns/Two_Patterns_TEST_20.csv
