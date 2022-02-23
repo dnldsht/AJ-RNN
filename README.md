@@ -25,6 +25,11 @@ python ajrnn.py --dataset_name xxx --missing_ratio xxx
 python ajrnn.py --dataset_name Computers --missing_ratio 20
 ```
 
+## SITS dataset
+```
+pip install gdown
+gdown --folder https://drive.google.com/drive/folders/1tTbRA_DAF32s-eNKTOnjHhXQYCzit1pS
+```
 
 ## Citation
 
@@ -40,4 +45,3 @@ number={},
 pages={1-1},  
 doi={10.1109/TPAMI.2020.3027975}}
 ```
-$ python ajrnn.py --batch_size 20 --epoch 600 --lamda_D 1 --G_epoch 5 --train_data_filename results/data/Two_Patterns/Two_Patterns_TRAIN_20.csv --test_data_filename results/data/Two_Patterns/Two_Patterns_TEST_20.csv
