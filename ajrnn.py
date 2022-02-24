@@ -162,7 +162,7 @@ class Generator(layers.Layer):
 class Discriminator(layers.Layer):
     def __init__(self, config, *args, **kwargs):
         super().__init__(name='Discriminator', *args, **kwargs, )
-        units = config.num_steps - 1
+        units = (config.num_steps - 1) * config.input_dimension_size
         self.l1 = layers.Dense(units, activation='tanh')
         self.l2 = layers.Dense(int(units)//2, activation='tanh')
         self.l3 = layers.Dense(units, activation='sigmoid')
@@ -263,17 +263,17 @@ def main(config):
 
     print(f"Training w/ {config.train_data_filename}")
 
-    train_dataset, num_classes, num_steps = utils.load_dataset(
-        config.train_data_filename, True)
+    train_dataset, num_classes, num_steps, num_bands = utils.load_sits()
 
     # For univariate
     config.num_steps = num_steps
-    config.input_dimension_size = 1
+    config.input_dimension_size = num_bands
+    print(config.num_steps, config.input_dimension_size)
     config.class_num = num_classes
 
-    print(f"Testing w/ {config.test_data_filename}")
-    test_dataset = utils.load_dataset(config.test_data_filename).batch(
-        config.batch_size, drop_remainder=True)
+    # print(f"Testing w/ {config.test_data_filename}")
+    # test_dataset = utils.load_dataset(config.test_data_filename).batch(
+    #     config.batch_size, drop_remainder=True)
 
     model = AJRNN(config)
     model.compile()
@@ -286,8 +286,8 @@ def main(config):
     train_dataset = train_dataset.shuffle(10).batch(
         config.batch_size, drop_remainder=True)
 
-    model.fit(train_dataset, epochs=config.epoch,
-              validation_data=test_dataset,  validation_freq=50)
+    model.fit(train_dataset, epochs=config.epoch)
+    # validation_data=test_dataset,  validation_freq=50
 
 
 if __name__ == "__main__":

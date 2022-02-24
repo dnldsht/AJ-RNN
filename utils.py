@@ -114,3 +114,46 @@ def load_dataset(filename, extra=False):
     if extra:
         return dataset, num_classes, num_steps
     return dataset
+
+
+def load_sits():
+    data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
+    masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
+    lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
+    num_steps = data.shape[1]
+    num_bands = data.shape[2]
+    labels, num_classes = transfer_labels(lut[:, 1])
+    labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
+    prediction_target = data[:, 1:]
+    masks = masks[:, 1:]
+    mask = np.ones_like(prediction_target)
+    mask[np.where(masks == 0)] = 0
+
+    data = data.reshape(-1, num_steps, num_bands)
+    prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
+    mask = mask.reshape(-1, num_steps - 1, num_bands)
+    dataset = tf.data.Dataset.from_tensor_slices(
+        (data, prediction_target, mask, labels))
+    print(dataset)
+
+    return dataset, num_classes, num_steps, num_bands
+
+
+# def load_sits():
+#     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
+#     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
+#     lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
+#     num_steps = data.shape[1]
+#     num_bands = data.shape[2]
+#     labels, num_classes = transfer_labels(lut[:, 1])
+#     labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
+#     prediction_target = data[:, 1:]
+#     masks = masks[:, 1:]
+#     mask = np.ones_like(prediction_target)
+#     mask[np.where(masks == 0)] = 0
+
+#     dataset = tf.data.Dataset.from_tensor_slices(
+#         (data, prediction_target, mask, labels))
+#     print(dataset)
+
+#     return dataset, num_classes, num_steps, num_bands
