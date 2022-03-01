@@ -112,7 +112,7 @@ def load_dataset(filename, extra=False):
         (data, prediction_target, mask, labels))
 
     if extra:
-        return dataset, num_classes, num_steps
+        return dataset, num_classes, num_steps, 1
     return dataset
 
 
@@ -134,7 +134,6 @@ def load_sits():
     mask = mask.reshape(-1, num_steps - 1, num_bands)
     dataset = tf.data.Dataset.from_tensor_slices(
         (data, prediction_target, mask, labels))
-    print(dataset)
 
     return dataset, num_classes, num_steps, num_bands
 
