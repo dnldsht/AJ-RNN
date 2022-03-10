@@ -261,14 +261,15 @@ class AJRNN(tf.keras.Model):
 
 def main(config):
 
-    print(f"Training w/ {config.train_data_filename}")
+    #print(f"Training w/ {config.train_data_filename}")
 
-    train_dataset, num_classes, num_steps, num_bands = utils.load_sits()
+    train_dataset, v_dataset, t_dataset, num_classes, num_steps, num_bands = utils.load_sits()
+    print(train_dataset.cardinality(),
+          v_dataset.cardinality(), t_dataset.cardinality())
 
     # For univariate
     config.num_steps = num_steps
     config.input_dimension_size = num_bands
-    print(config.num_steps, config.input_dimension_size)
     config.class_num = num_classes
 
     # print(f"Testing w/ {config.test_data_filename}")
@@ -286,8 +287,12 @@ def main(config):
     train_dataset = train_dataset.shuffle(10).batch(
         config.batch_size, drop_remainder=True)
 
-    model.fit(train_dataset, epochs=config.epoch)
-    # validation_data=test_dataset,  validation_freq=50
+    validation_dataset = v_dataset.batch(
+        config.batch_size, drop_remainder=True)
+
+    model.fit(train_dataset, epochs=config.epoch,
+              validation_data=validation_dataset,  validation_freq=1)
+    #
 
 
 if __name__ == "__main__":
@@ -299,8 +304,8 @@ if __name__ == "__main__":
                         help='coefficient that adjusts gradients propagated from discriminator')
     parser.add_argument('--G_epoch', type=int, required=True,
                         help='frequency of updating AJRNN in an adversarial training epoch')
-    parser.add_argument('--train_data_filename', type=str, required=True)
-    parser.add_argument('--test_data_filename', type=str, required=True)
+    # parser.add_argument('--train_data_filename', type=str, required=True)
+    # parser.add_argument('--test_data_filename', type=str, required=True)
 
     parser.add_argument('--layer_num', type=int, required=False,
                         default=1, help='number of layers of AJRNN')
