@@ -291,7 +291,7 @@ def main(config):
         config.batch_size, drop_remainder=True)
 
     model.fit(train_dataset, epochs=config.epoch,
-              validation_data=validation_dataset,  validation_freq=1)
+              validation_data=validation_dataset,  validation_freq=5)
     #
 
 

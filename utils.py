@@ -204,7 +204,7 @@ def load_sits():
     prediction_target = data[:, 1:]
     masks = masks[:, 1:]
     mask = np.ones_like(prediction_target)
-    mask[np.where(masks == 0)] = 0
+    mask[np.where(masks == 1)] = 0
 
     data = data.reshape(-1, num_steps, num_bands)
     prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
@@ -214,7 +214,7 @@ def load_sits():
         (data, prediction_target, mask, labels))
 
     training, validation, test = get_dataset_partitions_tf(
-        dataset, train_split=0.4, val_split=0.2, test_split=0.4, shuffle=True, shuffle_size=10000)
+        dataset, train_split=0.6, val_split=0.2, test_split=0.2, shuffle=True, shuffle_size=10000)
 
     return training, validation, test, num_classes, num_steps, num_bands
 
