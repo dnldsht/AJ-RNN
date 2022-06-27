@@ -6,6 +6,7 @@ import numpy as np
 import argparse
 from tensorflow.keras import layers
 from utils import MISSING_VALUE
+tf.config.set_visible_devices([], 'GPU')
 
 
 class Config(object):
@@ -259,13 +260,11 @@ class AJRNN(tf.keras.Model):
         return {'loss': loss_tensors['loss'], 'accuracy': accuracy}
 
 
-def main(config):
+def main(config:Config):
 
-    #print(f"Training w/ {config.train_data_filename}")
+    print(f"Training w/ {config.train_data_filename}")
 
-    train_dataset, v_dataset, t_dataset, num_classes, num_steps, num_bands = utils.load_sits()
-    print(train_dataset.cardinality(),
-          v_dataset.cardinality(), t_dataset.cardinality())
+    train_dataset, v_dataset, t_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
 
     # For univariate
     config.num_steps = num_steps
@@ -304,8 +303,8 @@ if __name__ == "__main__":
                         help='coefficient that adjusts gradients propagated from discriminator')
     parser.add_argument('--G_epoch', type=int, required=True,
                         help='frequency of updating AJRNN in an adversarial training epoch')
-    # parser.add_argument('--train_data_filename', type=str, required=True)
-    # parser.add_argument('--test_data_filename', type=str, required=True)
+    parser.add_argument('--train_data_filename', type=str, required=False, default="SITS")
+    parser.add_argument('--test_data_filename', type=str, required=False, default=None)
 
     parser.add_argument('--layer_num', type=int, required=False,
                         default=1, help='number of layers of AJRNN')

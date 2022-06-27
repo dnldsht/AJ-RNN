@@ -103,6 +103,7 @@ def load_dataset(filename, extra=False):
     prediction_target = data[:, 1:]
     mask = np.ones_like(prediction_target)
     mask[np.where(prediction_target == MISSING_VALUE)] = 0
+    check_missing_ratio(mask)
 
     data = data.reshape(-1, num_steps, 1)
     prediction_target = prediction_target.reshape(-1, num_steps - 1, 1)
@@ -165,10 +166,10 @@ def adapt_slices(slices, num_steps, num_bands):
 
 
 def check_missing_ratio(masks):
-    total = np.multiply(*masks.shape)
+    total = np.prod(masks.shape)
     ones = np.count_nonzero(masks)
     missing_ratio = 1 - ones/total
-    print(f"MISSING RATIO: {missing_ratio}")
+    print(f"MISSING RATIO: {missing_ratio:.3f}")
 
 
 def get_dataset_partitions_tf(ds, train_split=0.8, val_split=0.1, test_split=0.1, shuffle=True, shuffle_size=10000):
@@ -178,7 +179,7 @@ def get_dataset_partitions_tf(ds, train_split=0.8, val_split=0.1, test_split=0.1
 
     if shuffle:
         # Specify seed to always have the same split distribution between runs
-        ds = ds.shuffle(shuffle_size, seed=12, reshuffle_each_iteration=False)
+        ds = ds.shuffle(shuffle_size, reshuffle_each_iteration=False)
 
     train_size = int(train_split * ds_size)
     val_size = int(val_split * ds_size)
@@ -194,17 +195,19 @@ def load_sits():
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
     lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
+    data[np.where(masks == 1)] = MISSING_VALUE
 
-    check_missing_ratio(masks)
+    
 
     num_steps = data.shape[1]
     num_bands = data.shape[2]
     labels, num_classes = transfer_labels(lut[:, 1])
     labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
     prediction_target = data[:, 1:]
-    masks = masks[:, 1:]
     mask = np.ones_like(prediction_target)
-    mask[np.where(masks == 1)] = 0
+    mask[np.where(prediction_target == MISSING_VALUE)] = 0
+
+    check_missing_ratio(np.array(mask))
 
     data = data.reshape(-1, num_steps, num_bands)
     prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
@@ -214,11 +217,11 @@ def load_sits():
         (data, prediction_target, mask, labels))
 
     training, validation, test = get_dataset_partitions_tf(
-        dataset, train_split=0.6, val_split=0.2, test_split=0.2, shuffle=True, shuffle_size=10000)
+        dataset, train_split=0.5, val_split=0.25, test_split=0.25, shuffle=True, shuffle_size=10000)
 
     return training, validation, test, num_classes, num_steps, num_bands
 
-    #asd = (data, prediction_target, mask, labels)
+    asd = (data, prediction_target, mask, labels)
 
     hashClID2obj = get_cl2objs(lut)
     train_perc = .4
@@ -238,7 +241,8 @@ def load_sits():
         valid_obj = objIds[limit_train:limit_valid]
         test_obj = objIds[limit_valid::]
 
-        slices = get_data(train_obj, lut, asd)
+        slices = get_data(train_obj, lut, data,
+                          prediction_target, mask, labels)
         slices = adapt_slices(slices, num_steps, num_bands)
         d = tf.data.Dataset.from_tensor_slices(slices)
         if training is None:
@@ -288,3 +292,12 @@ def load_sits():
 #     print(dataset)
 
 #     return dataset, num_classes, num_steps, num_bands
+
+def load(train, test):
+    if train == 'SITS':
+        return load_sits()
+    
+    train_dataset, num_classes, num_steps, num_bands = load_dataset(train, True)
+    v_dataset = load_dataset(test, False)
+    return train_dataset, v_dataset,v_dataset, num_classes, num_steps, num_bands
+    
