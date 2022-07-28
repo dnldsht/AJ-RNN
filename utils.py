@@ -2,6 +2,8 @@
 import numpy as np
 import copy
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
+
 MISSING_VALUE = 128.0
 
 
@@ -41,57 +43,6 @@ def convertToOneHot(vector, num_classes=None):
     return result.astype(np.int32)
 
 
-def next_batch(batch_size, data, label, end_to_end, input_dimension_size, num_step, Trainable):
-    if end_to_end:
-        data[np.where(np.isnan(data))] = MISSING_VALUE
-    need_label = copy.deepcopy(label)
-    label = convertToOneHot(label, num_classes=len(np.unique(label)))
-    assert data.shape[0] == label.shape[0]
-    assert data.shape[0] >= batch_size
-    row = data.shape[0]
-    batch_len = int(row / batch_size)
-    left_row = row - batch_len * batch_size
-
-    # shuffle data for train
-    if Trainable:
-        indices = np.random.permutation(data.shape[0])
-        rand_data = data[indices]
-        rand_label = label[indices]
-        need_rand_label = need_label[indices]
-    else:
-        rand_data = data
-        rand_label = label
-        need_rand_label = need_label
-
-    for i in range(batch_len):
-        batch_input = rand_data[i*batch_size: (i+1)*batch_size, :]
-        batch_prediction_target = rand_data[i *
-                                            batch_size: (i+1)*batch_size, input_dimension_size:]
-        mask = np.ones_like(batch_prediction_target)
-        mask[np.where(batch_prediction_target == MISSING_VALUE)] = 0
-        batch_label = rand_label[i*batch_size: (i+1)*batch_size, :]
-        batch_need_label = need_rand_label[i*batch_size: (i+1)*batch_size]
-        yield (batch_input.reshape(-1, num_step, input_dimension_size), batch_prediction_target.reshape(-1, num_step - 1, input_dimension_size), mask.reshape(-1, num_step - 1, input_dimension_size), batch_label, batch_size, batch_need_label)
-
-    # padding data for equal batch_size
-    if left_row != 0:
-        need_more = batch_size - left_row
-        need_more = np.random.choice(np.arange(row), size=need_more)
-        batch_input = np.concatenate(
-            (rand_data[-left_row:, :], rand_data[need_more]), axis=0)
-        batch_prediction_target = np.concatenate(
-            (rand_data[-left_row:, :], rand_data[need_more]), axis=0)[:, input_dimension_size:]
-        assert batch_input.shape[0] == batch_prediction_target.shape[0]
-        assert batch_input.shape[1] - \
-            input_dimension_size == batch_prediction_target.shape[1]
-        mask = np.ones_like(batch_prediction_target)
-        mask[np.where(batch_prediction_target == MISSING_VALUE)] = 0
-        batch_label = np.concatenate(
-            (rand_label[-left_row:, :], rand_label[need_more]), axis=0)
-        batch_need_label = np.concatenate(
-            (need_rand_label[-left_row:], need_rand_label[need_more]), axis=0)
-        yield (batch_input.reshape(-1, num_step, input_dimension_size), batch_prediction_target.reshape(-1, num_step - 1, input_dimension_size), mask.reshape(-1, num_step - 1, input_dimension_size), batch_label, left_row, batch_need_label)
-
 
 def load_dataset(filename, extra=False):
     data, labels = load_data(filename)
@@ -115,54 +66,6 @@ def load_dataset(filename, extra=False):
     if extra:
         return dataset, num_classes, num_steps, 1
     return dataset
-
-
-def get_cl2objs(lut):
-    clID_col = lut[:, 1]
-    clID = np.unique(clID_col)
-    hashClID2obj = {}
-    for val in clID:
-        idx = np.where(clID_col == val)
-        t_labels = lut[idx]
-        hashClID2obj[val] = np.unique(t_labels[:, 0])
-    return hashClID2obj
-
-
-def get_data(objs, lut, data, prediction_target, mask, labels):
-    objID_col = lut[:, 1]
-    tot_data = []
-    tot_prediction_target = []
-    tot_mask = []
-    tot_labels = []
-
-    for obj in objs:
-        idx = np.where(objID_col == obj)
-        # print(idx)
-        tot_data.append(data[idx])
-        tot_labels.append(labels[idx])
-        #idx = np.add(idx, 1)
-        tot_prediction_target.append(prediction_target[idx])
-        tot_mask.append(mask[idx])
-
-    tot_data = np.concatenate(tot_data, axis=0)
-    tot_prediction_target = np.concatenate(tot_prediction_target, axis=0)
-    tot_mask = np.concatenate(tot_mask, axis=0)
-    tot_labels = np.concatenate(tot_labels, axis=0)
-
-    return tot_data, tot_prediction_target, tot_mask, tot_labels
-
-
-def adapt_slices(slices, num_steps, num_bands):
-    data, prediction_target, mask, labels = slices
-    prediction_target = data[:, 1:]
-    masks = masks[:, 1:]
-    mask = np.ones_like(prediction_target)
-    mask[np.where(masks == 0)] = 0
-
-    data = data.reshape(-1, num_steps, num_bands)
-    prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
-    mask = mask.reshape(-1, num_steps - 1, num_bands)
-    return data, prediction_target, mask, labels
 
 
 def check_missing_ratio(masks):
@@ -195,14 +98,13 @@ def load_sits():
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
     lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
-    data[np.where(masks == 1)] = MISSING_VALUE
-
     
+    data[np.where(masks == 1)] = MISSING_VALUE
 
     num_steps = data.shape[1]
     num_bands = data.shape[2]
     labels, num_classes = transfer_labels(lut[:, 1])
-    labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
+    # labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
     prediction_target = data[:, 1:]
     mask = np.ones_like(prediction_target)
     mask[np.where(prediction_target == MISSING_VALUE)] = 0
@@ -213,85 +115,21 @@ def load_sits():
     prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
     mask = mask.reshape(-1, num_steps - 1, num_bands)
 
-    dataset = tf.data.Dataset.from_tensor_slices(
-        (data, prediction_target, mask, labels))
 
-    training, validation, test = get_dataset_partitions_tf(
-        dataset, train_split=0.5, val_split=0.25, test_split=0.25, shuffle=True, shuffle_size=10000)
+    split = train_test_split(data, prediction_target, mask, labels, test_size=0.2, random_state=42, stratify=labels)
+    train_data, test_data, train_target, test_target, train_mask, test_mask, train_labels, test_labels = split
+    train_labels, test_labels = convertToOneHot(train_labels, num_classes=num_classes), convertToOneHot(test_labels, num_classes=num_classes)
 
-    return training, validation, test, num_classes, num_steps, num_bands
-
-    asd = (data, prediction_target, mask, labels)
-
-    hashClID2obj = get_cl2objs(lut)
-    train_perc = .4
-    train_valid = .3
-
-    training = None
-    validation = None
-    test = None
-
-    for k in hashClID2obj.keys():
-        objIds = hashClID2obj[k]
-        objIds = tf.random.shuffle(objIds)
-        limit_train = int(len(objIds) * train_perc)
-        limit_valid = limit_train + int(len(objIds) * train_valid)
-
-        train_obj = objIds[0:limit_train]
-        valid_obj = objIds[limit_train:limit_valid]
-        test_obj = objIds[limit_valid::]
-
-        slices = get_data(train_obj, lut, data,
-                          prediction_target, mask, labels)
-        slices = adapt_slices(slices, num_steps, num_bands)
-        d = tf.data.Dataset.from_tensor_slices(slices)
-        if training is None:
-            training = d
-        else:
-            training.concatenate(d)
-
-        slices = get_data(valid_obj, lut, data,
-                          prediction_target, mask, labels)
-        slices = adapt_slices(slices, num_steps, num_bands)
-        d = tf.data.Dataset.from_tensor_slices(slices)
-        if validation is None:
-            validation = d
-        else:
-            validation.concatenate(d)
-
-        slices = get_data(test_obj, lut, data,
-                          prediction_target, mask, labels)
-        slices = adapt_slices(slices, num_steps, num_bands)
-        d = tf.data.Dataset.from_tensor_slices(slices)
-        if test is None:
-            test = d
-        else:
-            test.concatenate(d)
-
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_data, train_target, train_mask, train_labels))
+    test_dataset = tf.data.Dataset.from_tensor_slices((test_data, test_target, test_mask, test_labels))
     # dataset = tf.data.Dataset.from_tensor_slices(
     #     (data, prediction_target, mask, labels))
 
-    return training, validation, test, num_classes, num_steps, num_bands
+    # training, validation, test = get_dataset_partitions_tf(
+    #     dataset, train_split=0.5, val_split=0.25, test_split=0.25, shuffle=True, shuffle_size=10000)
 
+    return train_dataset, test_dataset, num_classes, num_steps, num_bands
 
-# def load_sits():
-#     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
-#     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
-#     lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
-#     num_steps = data.shape[1]
-#     num_bands = data.shape[2]
-#     labels, num_classes = transfer_labels(lut[:, 1])
-#     labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
-#     prediction_target = data[:, 1:]
-#     masks = masks[:, 1:]
-#     mask = np.ones_like(prediction_target)
-#     mask[np.where(masks == 0)] = 0
-
-#     dataset = tf.data.Dataset.from_tensor_slices(
-#         (data, prediction_target, mask, labels))
-#     print(dataset)
-
-#     return dataset, num_classes, num_steps, num_bands
 
 def load(train, test):
     if train == 'SITS':
@@ -299,5 +137,5 @@ def load(train, test):
     
     train_dataset, num_classes, num_steps, num_bands = load_dataset(train, True)
     v_dataset = load_dataset(test, False)
-    return train_dataset, v_dataset,v_dataset, num_classes, num_steps, num_bands
+    return train_dataset, v_dataset, num_classes, num_steps, num_bands
     

@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import tensorflow as tf
 import argparse
+tf.config.set_visible_devices([], 'GPU')
 
 tf.compat.v1.disable_eager_execution()
 

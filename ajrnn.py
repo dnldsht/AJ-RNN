@@ -6,6 +6,7 @@ import numpy as np
 import argparse
 from tensorflow.keras import layers
 from utils import MISSING_VALUE
+
 tf.config.set_visible_devices([], 'GPU')
 
 
@@ -264,7 +265,7 @@ def main(config:Config):
 
     print(f"Training w/ {config.train_data_filename}")
 
-    train_dataset, v_dataset, t_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
+    train_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
 
     # For univariate
     config.num_steps = num_steps
@@ -286,12 +287,11 @@ def main(config:Config):
     train_dataset = train_dataset.shuffle(10).batch(
         config.batch_size, drop_remainder=True)
 
-    validation_dataset = v_dataset.batch(
+    validation_dataset = test_dataset.batch(
         config.batch_size, drop_remainder=True)
 
     model.fit(train_dataset, epochs=config.epoch,
-              validation_data=validation_dataset,  validation_freq=5)
-    #
+              validation_data=validation_dataset,  validation_freq=10)
 
 
 if __name__ == "__main__":
