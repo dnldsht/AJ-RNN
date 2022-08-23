@@ -26,7 +26,7 @@ def load_data(filename):
     return data, label
 
 
-def convertToOneHot(vector, num_classes=None):
+def convert_to_one_hot(vector, num_classes=None):
     # convert label to one_hot format
     vector = np.array(vector, dtype=int)
     if 0 not in np.unique(vector):
@@ -50,7 +50,7 @@ def load_dataset(filename, extra=False):
     num_steps = data.shape[1]
 
     labels, num_classes = transfer_labels(labels)
-    labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
+    labels = convert_to_one_hot(labels, num_classes=len(np.unique(labels)))
     prediction_target = data[:, 1:]
     mask = np.ones_like(prediction_target)
     mask[np.where(prediction_target == MISSING_VALUE)] = 0
@@ -93,6 +93,24 @@ def get_dataset_partitions_tf(ds, train_split=0.8, val_split=0.1, test_split=0.1
 
     return train_ds, val_ds, test_ds
 
+def split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2):
+    if train_size + val_size + test_size != 1:
+        raise ValueError('train_size + val_size + test_size != 1')
+    
+    split = train_test_split(data, prediction_target, mask, labels, test_size=val_size+test_size, stratify=labels)
+    train_data, rest_data, train_target, rest_target, train_mask, rest_mask, train_labels, rest_labels = split
+
+    split2 = train_test_split(rest_data, rest_target, rest_mask, rest_labels, test_size=(test_size+train_size/2), stratify=rest_labels)
+    val_data, test_data, val_target, test_target, val_mask, test_mask, val_labels, test_labels = split2
+
+    train_labels, val_labels, test_labels = convert_to_one_hot(train_labels, num_classes), convert_to_one_hot(val_labels, num_classes), convert_to_one_hot(test_labels, num_classes)
+    
+
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_data, train_target, train_mask, train_labels))
+    val_dataset = tf.data.Dataset.from_tensor_slices((val_data, val_target, val_mask, val_labels))
+    test_dataset = tf.data.Dataset.from_tensor_slices((test_data, test_target, test_mask, test_labels))
+
+    return train_dataset, val_dataset, test_dataset
 
 def load_sits():
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
@@ -104,7 +122,7 @@ def load_sits():
     num_steps = data.shape[1]
     num_bands = data.shape[2]
     labels, num_classes = transfer_labels(lut[:, 1])
-    # labels = convertToOneHot(labels, num_classes=len(np.unique(labels)))
+    # labels = convert_to_one_hot(labels, num_classes=len(np.unique(labels)))
     prediction_target = data[:, 1:]
     mask = np.ones_like(prediction_target)
     mask[np.where(prediction_target == MISSING_VALUE)] = 0
@@ -116,20 +134,13 @@ def load_sits():
     mask = mask.reshape(-1, num_steps - 1, num_bands)
 
 
-    split = train_test_split(data, prediction_target, mask, labels, test_size=0.2, random_state=42, stratify=labels)
-    train_data, test_data, train_target, test_target, train_mask, test_mask, train_labels, test_labels = split
-    train_labels, test_labels = convertToOneHot(train_labels, num_classes=num_classes), convertToOneHot(test_labels, num_classes=num_classes)
+    # train 0.6, val 0.2, test 0.2
+    train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
 
-    train_dataset = tf.data.Dataset.from_tensor_slices((train_data, train_target, train_mask, train_labels))
-    test_dataset = tf.data.Dataset.from_tensor_slices((test_data, test_target, test_mask, test_labels))
-    # dataset = tf.data.Dataset.from_tensor_slices(
-    #     (data, prediction_target, mask, labels))
+    return train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands
 
-    # training, validation, test = get_dataset_partitions_tf(
-    #     dataset, train_split=0.5, val_split=0.25, test_split=0.25, shuffle=True, shuffle_size=10000)
 
-    return train_dataset, test_dataset, num_classes, num_steps, num_bands
-
+    
 
 def load(train, test):
     if train == 'SITS':
@@ -137,5 +148,5 @@ def load(train, test):
     
     train_dataset, num_classes, num_steps, num_bands = load_dataset(train, True)
     v_dataset = load_dataset(test, False)
-    return train_dataset, v_dataset, num_classes, num_steps, num_bands
+    return train_dataset, v_dataset, None, num_classes, num_steps, num_bands
     

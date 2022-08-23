@@ -265,33 +265,37 @@ def main(config:Config):
 
     print(f"Training w/ {config.train_data_filename}")
 
-    train_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
+    train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
 
-    # For univariate
     config.num_steps = num_steps
     config.input_dimension_size = num_bands
     config.class_num = num_classes
 
-    # print(f"Testing w/ {config.test_data_filename}")
-    # test_dataset = utils.load_dataset(config.test_data_filename).batch(
-    #     config.batch_size, drop_remainder=True)
 
     model = AJRNN(config)
     model.compile()
 
-    # shape = [s.shape for s in train_dataset.element_spec]
-    # print(shape)
-    # model.build(shape)
-    # model.summary()
-
     train_dataset = train_dataset.shuffle(10).batch(
         config.batch_size, drop_remainder=True)
 
-    validation_dataset = test_dataset.batch(
+    validation_dataset = val_dataset.batch(
         config.batch_size, drop_remainder=True)
+    
+    model.fit(train_dataset, 
+            epochs=config.epoch,
+            validation_data=validation_dataset,
+            verbose=2,
+            )
 
-    model.fit(train_dataset, epochs=config.epoch,
-              validation_data=validation_dataset,  validation_freq=10)
+    if test_dataset is not None:
+        test_dataset = test_dataset.batch(
+            config.batch_size, drop_remainder=True)
+        print()
+        print(f"Test Set:")
+
+        model.evaluate(test_dataset)
+        
+    
 
 
 if __name__ == "__main__":
