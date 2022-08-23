@@ -284,6 +284,7 @@ def main(config:Config):
     model.fit(train_dataset, 
             epochs=config.epoch,
             validation_data=validation_dataset,
+            validation_freq=10,
             verbose=2,
             )
 
