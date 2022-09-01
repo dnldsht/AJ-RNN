@@ -284,9 +284,7 @@ def main(config:Config):
     model.fit(train_dataset, 
             epochs=config.epoch,
             validation_data=validation_dataset,
-            validation_freq=10,
-            verbose=2,
-            )
+            validation_freq=10)
 
     if test_dataset is not None:
         test_dataset = test_dataset.batch(

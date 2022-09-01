@@ -3,6 +3,7 @@ import numpy as np
 import copy
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
 
 MISSING_VALUE = 128.0
 
@@ -112,6 +113,48 @@ def split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.
 
     return train_dataset, val_dataset, test_dataset
 
+def get_unique_ids_by_class(lut):
+    labels = lut[:, 1]
+    unique_labels = np.unique(labels)
+    ids_by_class = {}
+    for label in unique_labels:
+      idx = np.where(labels == label)
+      lut_subset = lut[idx]
+      ids_by_class[label] = np.unique(lut_subset[:, 0])
+    return ids_by_class
+
+def get_idx_of_object_ids(ids, lut):
+    lut_ids = lut[:, 0]
+    tot_idx = []
+    for i in ids:
+        tot_idx.append(np.where(lut_ids == i)[0])
+    tot_idx = np.concatenate(tot_idx, axis=0)
+    return tot_idx
+
+def get_split_idx(lut, train_perc=.6, val_perc=.2):
+  train_idx, valid_idx, test_idx = [], [], []
+  unique_ids_by_class = get_unique_ids_by_class(lut)
+
+  for label in unique_ids_by_class:
+    ids = unique_ids_by_class[label]
+    ids = shuffle(ids)
+    
+    limit_train = int(len(ids)* train_perc )
+    limit_val = limit_train + int(len(ids)* val_perc)
+    
+    train_idx.extend(get_idx_of_object_ids(ids[0:limit_train], lut))
+    valid_idx.extend(get_idx_of_object_ids(ids[limit_train:limit_val], lut))
+    test_idx.extend(get_idx_of_object_ids(ids[limit_val::], lut))
+  return (train_idx,), (valid_idx,), (test_idx,)
+
+def generate_dataset(idx, data, prediction_target, mask, labels, num_classes):
+    data_subset = data[idx]
+    mask_subset = mask[idx]
+    labels_subset = convert_to_one_hot(labels[idx], num_classes)
+    prediction_target_subset = prediction_target[idx]
+    return tf.data.Dataset.from_tensor_slices((data_subset, prediction_target_subset, mask_subset, labels_subset ))
+
+
 def load_sits():
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
@@ -135,7 +178,14 @@ def load_sits():
 
 
     # train 0.6, val 0.2, test 0.2
-    train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
+    # train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
+    train_idx, val_idx, test_idx = get_split_idx(lut)
+    train_dataset = generate_dataset(train_idx, data, prediction_target, mask, labels, num_classes)
+    val_dataset = generate_dataset(val_idx, data, prediction_target, mask, labels, num_classes)
+    test_dataset = generate_dataset(test_idx, data, prediction_target, mask, labels, num_classes)
+    #print('train:', train_dataset.shape, 'val:', val_dataset.shape, 'test:', test_dataset.shape)
+    #print(train_dataset)
+
 
     return train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands
 
