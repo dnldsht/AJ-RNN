@@ -131,21 +131,24 @@ def get_idx_of_object_ids(ids, lut):
     tot_idx = np.concatenate(tot_idx, axis=0)
     return tot_idx
 
-def get_split_idx(lut, train_perc=.6, val_perc=.2):
-  train_idx, valid_idx, test_idx = [], [], []
-  unique_ids_by_class = get_unique_ids_by_class(lut)
+def get_split_idx(lut, train_perc=.6, val_perc=.2, test_perc=.2):
+    train_idx, valid_idx, test_idx = [], [], []
+    unique_ids_by_class = get_unique_ids_by_class(lut)
 
-  for label in unique_ids_by_class:
-    ids = unique_ids_by_class[label]
-    ids = shuffle(ids)
-    
-    limit_train = int(len(ids)* train_perc )
-    limit_val = limit_train + int(len(ids)* val_perc)
-    
-    train_idx.extend(get_idx_of_object_ids(ids[0:limit_train], lut))
-    valid_idx.extend(get_idx_of_object_ids(ids[limit_train:limit_val], lut))
-    test_idx.extend(get_idx_of_object_ids(ids[limit_val::], lut))
-  return (train_idx,), (valid_idx,), (test_idx,)
+    for label in unique_ids_by_class:
+        ids = unique_ids_by_class[label]
+        ids = shuffle(ids)
+        
+        limit_train = int(len(ids)* train_perc )
+        limit_val = limit_train + int(len(ids)* val_perc)
+        limit_test = limit_val + int(len(ids)* test_perc)
+        
+        
+        train_idx.extend(get_idx_of_object_ids(ids[0:limit_train], lut))
+        valid_idx.extend(get_idx_of_object_ids(ids[limit_train:limit_val], lut))
+        test_idx.extend(get_idx_of_object_ids(ids[limit_val:], lut))
+    print( len(train_idx)+ len(valid_idx)+ len(test_idx), len(lut))
+    return (train_idx,), (valid_idx,), (test_idx,)
 
 def generate_dataset(idx, data, prediction_target, mask, labels, num_classes):
     data_subset = data[idx]
