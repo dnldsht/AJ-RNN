@@ -66,7 +66,6 @@ class Generator(layers.Layer):
 
         self.dense1 = layers.Dense(self.class_num)
 
-    #@tf.function
     def __call__(self, input, prediction_target, mask, label_target):
 
         with tf.compat.v1.variable_scope(self.name):
@@ -129,8 +128,9 @@ class Generator(layers.Layer):
 
         # use mask to use the observer values for the loss_prediction
         with tf.compat.v1.name_scope("loss_prediction"):
-            loss_prediction = tf.reduce_mean(input_tensor=tf.square(
-                (prediction_targets - prediction) * masks)) / (self.batch_size)
+            loss_prediction = tf.reduce_mean(
+                tf.square((prediction_targets - prediction) * masks)
+                ) / (self.batch_size)
 
         regularization_loss = 0.0
         # TODO better regularization_loss
@@ -172,7 +172,6 @@ class Discriminator(layers.Layer):
         self.l2 = layers.Dense(int(units)//2, activation='tanh')
         self.l3 = layers.Dense(units, activation='sigmoid')
 
-    #@tf.function
     def __call__(self, x):
         out = self.l1(x)
         out = self.l2(out)
@@ -188,6 +187,9 @@ class AJRNN(tf.keras.Model):
         self.generator = Generator(config)
         self.discriminator = Discriminator(config)
 
+    def call(self, inputs, training=None):
+        pass
+
     def compile(self):
         super(AJRNN, self).compile()
         self.generator_optimizer = tf.keras.optimizers.Adam(
@@ -195,18 +197,9 @@ class AJRNN(tf.keras.Model):
         self.discriminator_optimizer = tf.keras.optimizers.Adam(
             config.learning_rate)
     
-    @property
-    def metrics(self):
-        # We list our `Metric` objects here so that `reset_states()` can be
-        # called automatically at the start of each epoch
-        # or at the start of `evaluate()`.
-        # If you don't implement this property, you have to call
-        # `reset_states()` yourself at the time of your choosing.
-        return []
 
-    #@tf.function
     def discriminator_step(self, input, prediction_target, mask, label_target, training=True):
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape() as tape:
             loss_tensors, accuracy, prediction, M, label_predict, prediction_target, last_hidden_output = self.generator(
                 input, prediction_target, mask, label_target)
             real_pre = prediction * (1 - M) + prediction_target * M
@@ -218,19 +211,19 @@ class AJRNN(tf.keras.Model):
             predict_M = tf.reshape(
                 predict_M, [-1, (config.num_steps-1)*config.input_dimension_size])
 
-            D_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
-                logits=predict_M, labels=M))
+            D_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=M))
+
         if training:
             gradients_of_discriminator = tape.gradient(
                 D_loss, self.discriminator.trainable_variables)
             self.discriminator_optimizer.apply_gradients(
                 zip(gradients_of_discriminator, self.discriminator.trainable_variables))
 
-    #@tf.function
     def generator_step(self, input, prediction_target, mask, label_target, training=True):
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape() as tape:
             loss_tensors, accuracy, prediction, M, label_predict, prediction_target, last_hidden_output = self.generator(
                 input, prediction_target, mask, label_target)
+                
             real_pre = prediction * (1 - M) + prediction_target * M
             real_pre = tf.reshape(
                 real_pre, [config.batch_size, (config.num_steps-1)*config.input_dimension_size])
@@ -251,9 +244,7 @@ class AJRNN(tf.keras.Model):
                 zip(gradients_of_generator, self.generator.trainable_variables))
         return loss_tensors['loss'], accuracy
 
-    #@tf.function
     def train_step(self, data, training=True):
-        #training=False
         input, prediction_target, mask, label_target = data
         for _ in range(self.config.D_epoch):
             self.discriminator_step(
@@ -265,18 +256,8 @@ class AJRNN(tf.keras.Model):
 
         return {'loss': batch_loss, 'accuracy': batch_accuracy}
 
-    #@tf.function
     def test_step(self, data):
-        #input, prediction_target, mask, label_target = data
         return self.train_step(data, training=False)
-        batch_loss, batch_accuracy = self.generator_step(input, prediction_target, mask, label_target, training=True)
-        return {'loss': batch_loss, 'accuracy': batch_accuracy}
-        
-
-        loss_tensors, accuracy, prediction, M, label_predict, prediction_target, last_hidden_output = self.generator(
-            input, prediction_target, mask, label_target)
-
-        return {'loss': loss_tensors['loss'], 'accuracy': accuracy}
 
 
 def main(config:Config):
@@ -298,24 +279,23 @@ def main(config:Config):
 
     validation_dataset = val_dataset.batch(
         config.batch_size, drop_remainder=True)
-
-    test_dataset = test_dataset.batch(
-            config.batch_size, drop_remainder=True)
-
-    # a = model.predict(test_dataset)
-    # print(a)
-    #print('model.trainable_variables', model.get)
+    model.build(input_shape=(config.batch_size, config.num_steps, config.input_dimension_size))
+    model.summary()
     
     history = model.fit(train_dataset, 
             epochs=config.epoch,
             validation_data=validation_dataset,
             verbose=2,
             validation_freq=10)
+
+
+    model.summary()
     
     print(history.history)
-    #model.save_weights('sits_weights.h5')  # creates a HDF5 file 'my_model.tf'
-    #model.built = True
-    #model.load_weights('sits_weights.h5')
+    model.save_weights('sits_weights.h5')  # creates a HDF5 file 'my_model.tf'
+    
+    
+    model.load_weights('sits_weights.h5', by_name = True, skip_mismatch = True)
     
     #print('model.trainable_variables', model.trainable_variables)
 
