@@ -369,7 +369,7 @@ def main(config:Config):
     history = model.fit(train_dataset, 
             epochs=config.epoch,
             validation_data=validation_dataset,
-            #verbose=2,
+            verbose=2,
             validation_freq=10)
 
 
