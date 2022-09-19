@@ -206,8 +206,8 @@ class AJRNN(tf.keras.Model):
 
     def compile(self):
         super(AJRNN, self).compile()
-        self.g_optimizer = tf.keras.optimizers.Adam(config.learning_rate)
-        self.d_optimizer = tf.keras.optimizers.Adam(config.learning_rate)
+        self.g_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
+        self.d_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
 
         self.d_loss = tf.keras.metrics.Mean(name="d_loss")
         self.cls_loss = tf.keras.metrics.Mean(name="cls_loss")
@@ -216,7 +216,7 @@ class AJRNN(tf.keras.Model):
     
     @property
     def metrics(self):
-        return [self.d_loss]
+        return [self.d_loss, self.cls_loss, self.accuracy]
     
 
     def discriminator_step(self, inputs,mask, training=True):
@@ -279,7 +279,7 @@ class AJRNN(tf.keras.Model):
 
 
             
-            total_G_loss = loss + config.lamda_D * G_loss
+            total_G_loss = loss + self.config.lamda_D * G_loss
 
         if training:
             grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
