@@ -189,6 +189,7 @@ class AJRNN(tf.keras.Model):
         self.config = config
         self.generator = Generator(config)
         self.discriminator = Discriminator(config)
+        self.built = True
 
     def call(self, inputs):
         return self.model(inputs)
@@ -254,7 +255,7 @@ class AJRNN(tf.keras.Model):
             masks = tf.reshape(mask, [-1, dim_size])
 
             loss_imputation = tf.reduce_mean(tf.square(prediction_targets - prediction ) * masks, name='loss_imputation') / self.config.batch_size            
-            loss = loss_classification + self.config.lamda_D * loss_imputation
+            loss = loss_classification + self.config.lamda * loss_imputation
 
 
             #print(prediction, prediction_targets, masks, mask)
@@ -362,9 +363,6 @@ def main(config:Config):
 
     validation_dataset = val_dataset.batch(
         config.batch_size, drop_remainder=True)
-    
-    # model.build(input_shape=(config.batch_size, config.num_steps, config.input_dimension_size))
-    # model.summary()
     
     history = model.fit(train_dataset, 
             epochs=config.epoch,
