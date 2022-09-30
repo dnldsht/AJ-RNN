@@ -1,15 +1,20 @@
 from statistics import mode
 import tensorflow as tf
+from tensorflow.keras import layers
+from tensorflow import keras
 import utils
 import argparse
-from tensorflow.keras import layers
 from utils import MISSING_VALUE
+
 tf.config.set_visible_devices([], 'GPU')
 
 #
 # https://medium.com/dive-into-ml-ai/customization-of-model-fit-to-write-a-combined-discriminator-generator-gan-trainer-in-keras-524bce10cf66
 
 class Config(object):
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+
     layer_num = 1
     hidden_size = 100
     learning_rate = 1e-3
@@ -25,28 +30,32 @@ class Config(object):
     train_data_filename = None
     test_data_filename = None
     save = None
+    verbose = 2
 
 
-class Discriminator(layers.Layer):
+class Discriminator(keras.Sequential):
     def __init__(self, config, *args, **kwargs):
         super().__init__(name='Discriminator', *args, **kwargs, )
         units = (config.num_steps - 1) * config.input_dimension_size
-        self.l1 = layers.Dense(units, activation='tanh')
-        self.l2 = layers.Dense(int(units)//2, activation='tanh')
-        self.l3 = layers.Dense(units, activation='sigmoid')
 
-    def __call__(self, x):
-        out = self.l1(x)
-        out = self.l2(out)
-        # predict_mask
-        return self.l3(out)
+        self.add(keras.Input(shape=(units)))
+        self.add(layers.Dense(units, activation='tanh'))
+        self.add(layers.Dense(int(units)//2, activation='tanh'))
+        self.add(layers.Dense(units, activation='sigmoid'))
+
+class Classifier(keras.Sequential):
+    def __init__(self, config, *args, **kwargs):
+        super().__init__(name='Classifier', *args, **kwargs, )
+        units = config.class_num
+        self.add(keras.Input(config.hidden_size))
+        self.add(layers.Dense(units))
 
 
 def RNNCell(type, hidden_size):
     if type == 'LSTM':
-        cell = tf.keras.layers.LSTMCell(hidden_size)
+        cell = layers.LSTMCell(hidden_size)
     elif type == 'GRU':
-        cell = tf.keras.layers.GRUCell(hidden_size)
+        cell = layers.GRUCell(hidden_size)
     return cell
 
 
@@ -76,11 +85,10 @@ class Generator(layers.Layer):
                 [RNNCell(type=self.cell_type, hidden_size=self.hidden_size) for _ in range(self.layer_num)]
             )
 
-        self.dense1 = layers.Dense(self.class_num)
 
-    def __call__(self, input): # , prediction_target, mask, label_target):
+    def call(self, input):
 
-        with tf.compat.v1.variable_scope(self.name):
+        with tf.name_scope(self.name):
 
             # initialize state to zero
             init_state = self.mulrnn_cell.get_initial_state(
@@ -91,7 +99,7 @@ class Generator(layers.Layer):
 
             # makes cell run
             # outputs has list of 'num_steps' with each element's shape (batch_size, hidden_size)
-            with tf.compat.v1.variable_scope("RNN"):
+            with tf.name_scope("RNN"):
                 for time_step in range(self.num_steps):
                     if time_step > 0:
                         tf.compat.v1.get_variable_scope().reuse_variables()
@@ -133,8 +141,8 @@ class Generator(layers.Layer):
             # masks = tf.reshape(mask, [-1, self.input_dimension_size])
 
             #  softmax for the label_prediction, label_logits has shape (batch_size, self.class_num)
-            with tf.compat.v1.variable_scope('Softmax_layer'):
-                label_logits = self.dense1(last_cell)
+            # with tf.compat.v1.variable_scope('Softmax_layer'):
+            #     label_logits = self.dense1(last_cell)
                 # loss_classficiation = tf.nn.softmax_cross_entropy_with_logits(
                 #     labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classficiation')
 
@@ -176,7 +184,7 @@ class Generator(layers.Layer):
         #     prediction_targets, [-1, (self.num_steps - 1)*self.input_dimension_size])
 
         #  return loss_tensors, accuracy, prediction, M, label_predict, prediction_target, last_cell
-        return prediction, label_logits, last_cell
+        return prediction, last_cell
 
 
 
@@ -189,26 +197,15 @@ class AJRNN(tf.keras.Model):
         self.config = config
         self.generator = Generator(config)
         self.discriminator = Discriminator(config)
+        self.classifier = Classifier(config)
+   
         self.built = True
-
-    def call(self, inputs):
-        return self.model(inputs)
-
-    # def call(self, x, training=None):
-
-    #     inputs, *_ = x
-    #     for _ in range(self.config.D_epoch):
-    #         discriminator_predictions = self.discriminator_step(inputs)
-
-    #     for _ in range(self.config.G_epoch):
-    #         y, generator_predictions = self.generator_step(inputs)
-
-    #     return y, generator_predictions, discriminator_predictions
 
     def compile(self):
         super(AJRNN, self).compile()
         self.g_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
         self.d_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
+        self.classifier_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
 
         self.d_loss = tf.keras.metrics.Mean(name="d_loss")
         self.cls_loss = tf.keras.metrics.Mean(name="cls_loss")
@@ -224,13 +221,17 @@ class AJRNN(tf.keras.Model):
         dim_size = self.config.input_dimension_size
         num_steps = self.config.num_steps
 
-
-        prediction, *_ = self.generator(inputs)
+        prediction, _ = self.generator(inputs)
+        print("pre", prediction, mask)
     
         prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])
         M = tf.reshape(mask, [-1, (num_steps - 1) * dim_size])
+
+        print("post", prediction, M)
+
         with tf.GradientTape() as tape:
             predict_M = self.discriminator(prediction)
+            print("predict_M", predict_M)
             loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=M)
         
         if training:
@@ -246,23 +247,27 @@ class AJRNN(tf.keras.Model):
         num_steps = self.config.num_steps
         batch_size = self.config.batch_size
 
-        with tf.GradientTape() as tape:
-            prediction, label_logits, _ = self.generator(inputs)
+
+        with tf.GradientTape(persistent=True) as tape:
+            prediction, last_cell = self.generator(inputs)
+            label_logits = self.classifier(last_cell)
+
             loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
             
             # reshape prediction_target and corresponding mask  into [batch * (numsteps-1), hidden_size]
             prediction_targets = tf.reshape(prediction_target, [-1, dim_size])
             masks = tf.reshape(mask, [-1, dim_size])
 
-            loss_imputation = tf.reduce_mean(tf.square(prediction_targets - prediction ) * masks, name='loss_imputation') / self.config.batch_size            
-            loss = loss_classification + self.config.lamda * loss_imputation
+            loss_imputation = tf.reduce_mean(tf.square(prediction_targets - prediction ) * masks, name='loss_imputation') / self.config.batch_size        
+            
+            regularization_loss = 0.0
+            for i in self.generator.trainable_weights:
+                regularization_loss += tf.nn.l2_loss(i)
+
+            loss = loss_classification + self.config.lamda * loss_imputation + 1e-4 * regularization_loss
 
 
-            #print(prediction, prediction_targets, masks, mask)
-            # prediction: Tensor("Generator_LSTM_1/prediction:0", shape=(1060, 16), dtype=float32)
-            # prediction_targets:Tensor("Reshape_2:0", shape=(1060, 16), dtype=float32)
-            # masks: Tensor("Reshape_3:0", shape=(1060, 16), dtype=float32) 
-            # masks Tensor("Reshape_3:0", shape=(1060, 16), dtype=float32)
+           
             prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])
             M = tf.reshape(mask, [-1, (num_steps - 1) * dim_size])
             prediction_target = tf.reshape(prediction_target, [-1, (num_steps - 1) * dim_size])
@@ -275,45 +280,28 @@ class AJRNN(tf.keras.Model):
             predict_M = tf.reshape(predict_M, [-1, (num_steps-1)*dim_size])
             
 
-            G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
-                logits=predict_M, labels=1 - M) * (1-M))
+            G_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M)
 
 
             
             total_G_loss = loss + self.config.lamda_D * G_loss
 
         if training:
+            # update classifier
+            grads = tape.gradient(loss_classification, self.classifier.trainable_variables)
+            self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
+
+            # update generator
             grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_variables))
 
+            
 
         self.cls_loss.update_state(loss_classification)
         self.accuracy.update_state(tf.argmax(label_target, axis=1), tf.argmax(label_logits, axis=1))
        
 
-        # with tf.GradientTape() as tape:
-        #     loss_tensors, accuracy, prediction, M, label_predict, prediction_target, last_hidden_output = self.generator(
-        #         input, prediction_target, mask, label_target)
-        #     real_pre = prediction * (1 - M) + prediction_target * M
-        #     real_pre = tf.reshape(
-        #         real_pre, [config.batch_size, (config.num_steps-1)*config.input_dimension_size])
-
-        #     predict_M = self.discriminator(real_pre)
-
-        #     predict_M = tf.reshape(
-        #         predict_M, [-1, (config.num_steps-1)*config.input_dimension_size])
-
-        #     G_loss = tf.reduce_mean(input_tensor=tf.nn.sigmoid_cross_entropy_with_logits(
-        #         logits=predict_M, labels=1 - M) * (1-M))
-
-        #     total_G_loss = loss_tensors['loss'] + config.lamda_D * G_loss
-
-        # if training:
-        #     gradients_of_generator = tape.gradient(
-        #         total_G_loss, self.generator.trainable_variables)
-        #     self.generator_optimizer.apply_gradients(
-        #         zip(gradients_of_generator, self.generator.trainable_variables))
-        # return loss_tensors['loss'], accuracy
+        
 
     def train_step(self, data, training=True):
         inputs, prediction_target, mask, label_target = data
@@ -331,10 +319,12 @@ class AJRNN(tf.keras.Model):
 
         # Generator
         
+        
+        
 
         return {
             "accuracy": self.accuracy.result(),
-            "loss_d": self.d_loss.result(),
+            "discriminator_loss": self.d_loss.result(),
             "loss_classification": self.cls_loss.result(),
             #"loss_imputation": loss_imputation,
             #"loss": loss
@@ -347,6 +337,7 @@ class AJRNN(tf.keras.Model):
 def main(config:Config):
 
     print(f"Training w/ {config.train_data_filename}")
+    
 
     train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
 
@@ -357,6 +348,7 @@ def main(config:Config):
 
     model = AJRNN(config)
     model.compile()
+    model.summary()
 
     train_dataset = train_dataset.shuffle(10).batch(
         config.batch_size, drop_remainder=True)
@@ -366,9 +358,9 @@ def main(config:Config):
     
     history = model.fit(train_dataset, 
             epochs=config.epoch,
-            validation_data=validation_dataset,
-            verbose=2,
-            validation_freq=10)
+            validation_data=train_dataset,
+            verbose=config.verbose,
+            validation_freq=1)
 
 
     #model.summary()
@@ -383,7 +375,7 @@ def main(config:Config):
         print()
         print(f"Test Set:")
 
-        history = model.evaluate(test_dataset, verbose=2, return_dict=True)
+        history = model.evaluate(train_dataset, verbose=config.verbose, return_dict=True)
         print(history)
 
     #print('model.trainable_variables', model.trainable_variables)
@@ -419,6 +411,8 @@ if __name__ == "__main__":
                         default='0', help='GPU to use')
     parser.add_argument('--save', type=str, required=False,
                         default=None, help='Path where to save model')
+    parser.add_argument('--verbose', type=int, required=False,
+                        default=2, help='verbose level')
 
     config = parser.parse_args()
     main(config)
