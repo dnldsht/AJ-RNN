@@ -131,7 +131,7 @@ def get_idx_of_object_ids(ids, lut):
     tot_idx = np.concatenate(tot_idx, axis=0)
     return tot_idx
 
-def get_split_idx(lut, train_perc=.1, val_perc=.2, test_perc=.2):
+def get_split_idx(lut, train_perc=.6, val_perc=.2, test_perc=.2):
     train_idx, valid_idx, test_idx = [], [], []
     unique_ids_by_class = get_unique_ids_by_class(lut)
 

@@ -15,11 +15,11 @@ class Config(object):
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
-    layer_num = 1
+    layer_num = 1 # number of layers of AJRNN
     hidden_size = 100
     learning_rate = 1e-3
     cell_type = 'GRU'
-    lamda = 1
+    lamda = 1 # coefficient that balances the prediction loss
     D_epoch = 1
     GPU = '0'
     '''User defined'''
@@ -63,18 +63,15 @@ def RNNCell(type, hidden_size):
 class Generator(layers.Layer):
 
     def __init__(self, config, *args, **kwargs):
-        super().__init__(name='Generator', *args, **kwargs, stateful=True)
+        super().__init__(name='Generator', *args, **kwargs)
         self.batch_size = config.batch_size  # configurable
         self.hidden_size = config.hidden_size  # congigurable for GRU/LSTM
         self.num_steps = config.num_steps  # length of input array
         # dimension of input eleemnt array univariate 1
         self.input_dimension_size = config.input_dimension_size
         self.cell_type = config.cell_type  # RNN Cell type
-        self.lamda = config.lamda  # coefficient that balances the prediction loss
-        self.class_num = config.class_num  # number of targes
-        self.layer_num = config.layer_num  # number of layers of AJRNN
+        self.layer_num = config.layer_num  
 
-        #with tf.compat.v1.variable_scope(self.name):
         cells = [RNNCell(type=self.cell_type, hidden_size=self.hidden_size) for _ in range(self.layer_num)]
         self.mulrnn_cell = layers.StackedRNNCells(cells)
 
@@ -83,21 +80,20 @@ class Generator(layers.Layer):
         self.W = self.add_weight(
             "kernel",
             dtype=tf.float32,
-            shape=[self.hidden_size, self.input_dimension_size],
+            shape=[self.hidden_size, input_shape[-1]],
             initializer=tf.keras.initializers.TruncatedNormal(mean=0., stddev=0.1)
         )
 
         self.bias = self.add_weight(
             "bias",
             dtype=tf.float32,
-            shape=[self.input_dimension_size],
+            shape=[input_shape[-1]],
             initializer=tf.keras.initializers.Constant(value=0.1) # not 0?
         )
         
 
     def call(self, input):
 
-        #with tf.name_scope(self.name):
 
         # initialize state to zero
         init_state = self.mulrnn_cell.get_initial_state(batch_size=self.batch_size, dtype=tf.float32)
@@ -107,11 +103,8 @@ class Generator(layers.Layer):
 
         # makes cell run
         # outputs has list of 'num_steps' with each element's shape (batch_size, hidden_size)
-        #with tf.name_scope("RNN"):
+        
         for time_step in range(self.num_steps):
-            if time_step > 0:
-                tf.compat.v1.get_variable_scope().reuse_variables()
-                #pass
             if time_step == 0:
                 (cell_output, state) = self.mulrnn_cell(input[:, time_step, :], state)
                 outputs.append(cell_output)
@@ -119,6 +112,7 @@ class Generator(layers.Layer):
                 # comparison has shape (batch_size, self.input_dimension_size) with elements 1 (means missing) when equal or 0 (not missing) otherwise
                 comparison = tf.equal(input[:, time_step, :], tf.constant(MISSING_VALUE))
                 current_prediction_output = tf.matmul(outputs[time_step - 1], self.W) + self.bias
+
                 # change the current_input, select current_prediction_output when 1 (missing) or use input when 0 (not missing)
                 current_input = tf.where(comparison, current_prediction_output, input[:, time_step, :])
                 (cell_output, state) = self.mulrnn_cell(current_input, state)
@@ -134,57 +128,8 @@ class Generator(layers.Layer):
         prediction_hidden_output = tf.reshape(tensor=tf.concat(values=prediction_target_hidden_output, axis=1), shape=[-1, self.hidden_size])
 
         # prediction has shape (batch * (numsteps - 1), self.input_dimension_size)
-        prediction = tf.add(tf.matmul(prediction_hidden_output, self.W), self.bias, name='prediction')
+        prediction = tf.add(tf.matmul(prediction_hidden_output, self.W), self.bias)
 
-            # reshape prediction_target and corresponding mask  into [batch * (numsteps-1), hidden_size]
-            # prediction_targets = tf.reshape(
-            #     prediction_target, [-1, self.input_dimension_size])
-            # masks = tf.reshape(mask, [-1, self.input_dimension_size])
-
-            #  softmax for the label_prediction, label_logits has shape (batch_size, self.class_num)
-            # with tf.compat.v1.variable_scope('Softmax_layer'):
-            #     label_logits = self.dense1(last_cell)
-                # loss_classficiation = tf.nn.softmax_cross_entropy_with_logits(
-                #     labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classficiation')
-
-        # use mask to use the observer values for the loss_prediction
-        # with tf.compat.v1.name_scope("loss_prediction"):
-        #     loss_prediction = tf.reduce_mean(input_tensor=tf.square(
-        #         (prediction_targets - prediction) * masks)) / (self.batch_size)
-
-        # regularization_loss = 0.0
-        # # TODO better regularization_loss
-        # for i in self.trainable_weights:
-        #     regularization_loss += tf.nn.l2_loss(i)
-
-        # with tf.compat.v1.name_scope("loss_total"):
-        #     loss = loss_classficiation + self.lamda * \
-        #         loss_prediction #+ 1e-4 * regularization_loss
-
-        # for get the classfication accuracy, label_predict has shape (batch_size, self.class_num)
-        # label_predict = tf.nn.softmax(label_logits, name='test_probab')
-        # correct_predictions = tf.equal(
-        #     tf.argmax(input=label_predict, axis=1), tf.argmax(input=label_target, axis=1))
-
-        # accuracy = tf.cast(correct_predictions, tf.float32, name='accuracy')
-
-        # loss_tensors = {
-        #     'loss_prediction': loss_prediction,
-        #     'loss_classficiation': loss_classficiation,
-        #     'regularization_loss': regularization_loss,
-        #     'loss': loss
-        # }
-
-        ## useless reshape??
-        # prediction = tf.reshape(
-        #     prediction, [-1, (self.num_steps - 1)*self.input_dimension_size])
-
-        # M = tf.reshape(mask, [-1, (self.num_steps - 1)
-        #                * self.input_dimension_size])
-        # prediction_target = tf.reshape(
-        #     prediction_targets, [-1, (self.num_steps - 1)*self.input_dimension_size])
-
-        #  return loss_tensors, accuracy, prediction, M, label_predict, prediction_target, last_cell
         return prediction, last_cell
 
 
@@ -204,14 +149,15 @@ class AJRNN(tf.keras.Model):
 
     def compile(self):
         super(AJRNN, self).compile()
-        self.g_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
-        self.d_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
-        self.classifier_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
+        self.g_optimizer = tf.keras.optimizers.Adam(0)
+        self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
+        self.classifier_optimizer = tf.keras.optimizers.Adam(1e-4)
 
         self.discriminator_loss = tf.keras.metrics.Mean(name="discriminator_loss")
         self.classifier_loss = tf.keras.metrics.Mean(name="classifier_loss")
         self.generator_loss = tf.keras.metrics.Mean(name="generator_loss")
-        self.accuracy = tf.keras.metrics.Accuracy(name="accuracy")
+        self.accuracy = tf.keras.metrics.Mean(name="accuracy")
+        #self.accuracy = tf.keras.metrics.Accuracy(name="accuracy")
     
     @property
     def metrics(self):
@@ -264,6 +210,7 @@ class AJRNN(tf.keras.Model):
                 regularization_loss += tf.nn.l2_loss(i)
 
             loss = loss_classification + self.config.lamda * loss_imputation + 1e-4 * regularization_loss
+            #loss = loss_classification + self.config.lamda * loss_imputation + 1e-4 * regularization_loss
 
 
            
@@ -279,9 +226,6 @@ class AJRNN(tf.keras.Model):
             
 
             G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
-
-
-            
             total_G_loss = loss + self.config.lamda_D * G_loss
 
         if training:
@@ -290,21 +234,26 @@ class AJRNN(tf.keras.Model):
             self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
 
             # update generator
-            grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
+            grads = tape.gradient(G_loss, self.generator.trainable_variables)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_variables))
 
             
-        self.generator_loss.update_state(total_G_loss)
+        self.generator_loss.update_state(G_loss)
         self.classifier_loss.update_state(loss_classification)
-        self.accuracy.update_state(tf.argmax(label_target, axis=1), tf.argmax(label_logits, axis=1))
+        
+        # for get the classfication accuracy, label_predict has shape (batch_size, self.class_num)
+        label_predict = tf.nn.softmax(label_logits, name='test_probab')
+        correct_predictions = tf.equal(
+            tf.argmax(input=label_predict, axis=1), tf.argmax(input=label_target, axis=1))
+        accuracy = tf.cast(correct_predictions, tf.float32, name='accuracy')
+        self.accuracy.update_state(accuracy)
+        #self.accuracy.update_state(tf.argmax(label_target, axis=1), tf.argmax(label_predict, axis=1))
        
 
         
 
     def train_step(self, data, training=True):
         inputs, prediction_target, mask, label_target = data
-        dim_size = self.config.input_dimension_size
-        num_steps = self.config.num_steps
 
         
         for _ in range(self.config.D_epoch):
@@ -314,23 +263,21 @@ class AJRNN(tf.keras.Model):
             self.generator_step(inputs, prediction_target, mask, label_target, training=training)
 
 
-
-        # Generator
-        
-        
-        
-
         return {
             "accuracy": self.accuracy.result(),
             "discriminator_loss": self.discriminator_loss.result(),
             "classifier_loss": self.classifier_loss.result(),
             "generator_loss": self.generator_loss.result()
-            #"loss_imputation": loss_imputation,
-            #"loss": loss
         }
 
     def test_step(self, data):
-        return self.train_step(data, training=False)
+        inputs, prediction_target, mask, label_target = data
+
+        self.generator_step(inputs, prediction_target, mask, label_target, training=False)
+
+        return {
+            "accuracy": self.accuracy.result()
+        }
 
 
 def main(config:Config):
@@ -348,7 +295,7 @@ def main(config:Config):
     model = AJRNN(config)
     model.compile()
 
-    train_dataset = train_dataset.shuffle(10).batch(
+    train_dataset = train_dataset.batch(
         config.batch_size, drop_remainder=True)
 
     validation_dataset = val_dataset.batch(
@@ -356,7 +303,7 @@ def main(config:Config):
     
     history = model.fit(train_dataset, 
             epochs=config.epoch,
-            validation_data=train_dataset,
+            validation_data=validation_dataset,
             verbose=config.verbose,
             validation_freq=1)
 
@@ -374,7 +321,7 @@ def main(config:Config):
         print()
         print(f"Test Set:")
 
-        history = model.evaluate(train_dataset, verbose=config.verbose, return_dict=True)
+        history = model.evaluate(test_dataset, verbose=config.verbose, return_dict=True)
         print(history)
         model.summary()
 
