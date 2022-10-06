@@ -156,12 +156,15 @@ class AJRNN(tf.keras.Model):
         self.discriminator_loss = tf.keras.metrics.Mean(name="discriminator_loss")
         self.classifier_loss = tf.keras.metrics.Mean(name="classifier_loss")
         self.generator_loss = tf.keras.metrics.Mean(name="generator_loss")
+        self.imputation_loss = tf.keras.metrics.Mean(name="imputation_loss")
+        self.regularization_loss = tf.keras.metrics.Mean(name="regularization_loss")
+
         self.accuracy = tf.keras.metrics.Mean(name="accuracy")
         #self.accuracy = tf.keras.metrics.Accuracy(name="accuracy")
     
     @property
     def metrics(self):
-        return [self.discriminator_loss, self.generator_loss, self.classifier_loss, self.accuracy]
+        return [self.discriminator_loss, self.generator_loss, self.classifier_loss, self.imputation_loss, self.regularization_loss,  self.accuracy]
     
 
     def discriminator_step(self, inputs,mask, training=True):
@@ -203,13 +206,14 @@ class AJRNN(tf.keras.Model):
             prediction_targets = tf.reshape(prediction_target, [-1, dim_size])
             masks = tf.reshape(mask, [-1, dim_size])
 
-            loss_imputation = tf.reduce_mean(tf.square(prediction_targets - prediction ) * masks, name='loss_imputation') / self.config.batch_size        
+            loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
             
-            regularization_loss = 0.0
-            for i in self.generator.trainable_weights:
-                regularization_loss += tf.nn.l2_loss(i)
+            regularization_loss = sum(tf.nn.l2_loss(i) for i in self.generator.trainable_weights)
+            # regularization_loss = 0.0
+            # for i in self.generator.trainable_weights:
+            #     regularization_loss += tf.nn.l2_loss(i)
 
-            loss = loss_classification + self.config.lamda * loss_imputation + 1e-4 * regularization_loss
+            #loss = loss_classification + self.config.lamda * loss_imputation + 1e-4 * regularization_loss
             #loss = loss_classification + self.config.lamda * loss_imputation + 1e-4 * regularization_loss
 
 
@@ -226,7 +230,8 @@ class AJRNN(tf.keras.Model):
             
 
             G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
-            total_G_loss = loss + self.config.lamda_D * G_loss
+
+            total_G_loss = G_loss + 1e-4 * regularization_loss
 
         if training:
             # update classifier
@@ -234,10 +239,11 @@ class AJRNN(tf.keras.Model):
             self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
 
             # update generator
-            grads = tape.gradient(G_loss, self.generator.trainable_variables)
+            grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
             self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_variables))
 
-            
+        self.regularization_loss.update_state(regularization_loss)
+        self.imputation_loss.update_state(loss_imputation)   
         self.generator_loss.update_state(G_loss)
         self.classifier_loss.update_state(loss_classification)
         
@@ -267,7 +273,9 @@ class AJRNN(tf.keras.Model):
             "accuracy": self.accuracy.result(),
             "discriminator_loss": self.discriminator_loss.result(),
             "classifier_loss": self.classifier_loss.result(),
-            "generator_loss": self.generator_loss.result()
+            "generator_loss": self.generator_loss.result(),
+            "imputation_loss": self.imputation_loss.result(),
+            "regularization_loss": self.regularization_loss.result()
         }
 
     def test_step(self, data):
