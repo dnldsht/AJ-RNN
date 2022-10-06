@@ -29,7 +29,9 @@ class Config(object):
     G_epoch = None  # epoch for training of Generator
     train_data_filename = None
     test_data_filename = None
-    save = None
+    checkpoint_path = None
+    save_checkpoint = False
+    load_checkpoint = False
     verbose = 2
 
 
@@ -149,7 +151,7 @@ class AJRNN(tf.keras.Model):
 
     def compile(self):
         super(AJRNN, self).compile()
-        self.g_optimizer = tf.keras.optimizers.Adam(0)
+        self.g_optimizer = tf.keras.optimizers.Adam(1e-10)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-4)
 
@@ -208,13 +210,7 @@ class AJRNN(tf.keras.Model):
 
             loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
             
-            regularization_loss = sum(tf.nn.l2_loss(i) for i in self.generator.trainable_weights)
-            # regularization_loss = 0.0
-            # for i in self.generator.trainable_weights:
-            #     regularization_loss += tf.nn.l2_loss(i)
-
-            #loss = loss_classification + self.config.lamda * loss_imputation + 1e-4 * regularization_loss
-            #loss = loss_classification + self.config.lamda * loss_imputation + 1e-4 * regularization_loss
+            regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in self.generator.trainable_weights)
 
 
            
@@ -231,7 +227,7 @@ class AJRNN(tf.keras.Model):
 
             G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
 
-            total_G_loss = G_loss + 1e-4 * regularization_loss
+            total_G_loss = G_loss + regularization_loss
 
         if training:
             # update classifier
@@ -283,14 +279,13 @@ class AJRNN(tf.keras.Model):
 
         self.generator_step(inputs, prediction_target, mask, label_target, training=False)
 
-        return {
-            "accuracy": self.accuracy.result()
-        }
+        return {"accuracy": self.accuracy.result()}
 
 
 def main(config:Config):
 
     print(f"Training w/ {config.train_data_filename}")
+    print(f"Config {config.__dict__}")
     
 
     train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
@@ -308,20 +303,34 @@ def main(config:Config):
 
     validation_dataset = val_dataset.batch(
         config.batch_size, drop_remainder=True)
+
+    callbacks = []
+
+    if config.save_checkpoint:
+        callbacks.append(
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=config.checkpoint_path,
+                save_weights_only=True,
+                monitor='val_accuracy',
+                mode='max',
+                verbose=1,
+                save_best_only=True)
+        )
+
+    if config.load_checkpoint:
+        print(f"loading weights from {config.checkpoint_path}")
+        model.load_weights(config.checkpoint_path)
     
     history = model.fit(train_dataset, 
             epochs=config.epoch,
             validation_data=validation_dataset,
             verbose=config.verbose,
+            callbacks=callbacks,
             validation_freq=1)
 
-
-    #model.summary()
-    
+    print()
+    print("History training")
     print(history.history)
-    #print(model.generator.weights)
-    
-    #print('model.trainable_variables', model.trainable_variables)
 
     if test_dataset is not None:
         test_dataset = test_dataset.batch(
@@ -331,11 +340,6 @@ def main(config:Config):
 
         history = model.evaluate(test_dataset, verbose=config.verbose, return_dict=True)
         print(history)
-        model.summary()
-
-    #print('model.trainable_variables', model.trainable_variables)
-        
-    
 
 
 if __name__ == "__main__":
@@ -343,31 +347,24 @@ if __name__ == "__main__":
 
     parser.add_argument('--batch_size', type=int, required=True)
     parser.add_argument('--epoch', type=int, required=True)
-    parser.add_argument('--lamda_D', type=float, required=True,
-                        help='coefficient that adjusts gradients propagated from discriminator')
-    parser.add_argument('--G_epoch', type=int, required=True,
-                        help='frequency of updating AJRNN in an adversarial training epoch')
+    parser.add_argument('--lamda_D', type=float, required=True,help='coefficient that adjusts gradients propagated from discriminator')
+    parser.add_argument('--G_epoch', type=int, required=True, help='frequency of updating AJRNN in an adversarial training epoch')
+
     parser.add_argument('--train_data_filename', type=str, required=False, default="SITS")
     parser.add_argument('--test_data_filename', type=str, required=False, default=None)
 
-    parser.add_argument('--layer_num', type=int, required=False,
-                        default=1, help='number of layers of AJRNN')
-    parser.add_argument('--hidden_size', type=int, required=False,
-                        default=100, help='number of hidden units of AJRNN')
-    parser.add_argument('--learning_rate', type=float,
-                        required=False, default=1e-3)
-    parser.add_argument('--cell_type', type=str, required=False,
-                        default='GRU', help='should be "GRU" or "LSTM" ')
-    parser.add_argument('--lamda', type=float, required=False, default=1,
-                        help='coefficient that balances the prediction loss')
-    parser.add_argument('--D_epoch', type=int, required=False, default=1,
-                        help='frequency of updating dicriminator in an adversarial training epoch')
-    parser.add_argument('--GPU', type=str, required=False,
-                        default='0', help='GPU to use')
-    parser.add_argument('--save', type=str, required=False,
-                        default=None, help='Path where to save model')
-    parser.add_argument('--verbose', type=int, required=False,
-                        default=2, help='verbose level')
+    parser.add_argument('--layer_num', type=int, required=False, default=1, help='number of layers of AJRNN')
+    parser.add_argument('--hidden_size', type=int, required=False, default=100, help='number of hidden units of AJRNN')
+    parser.add_argument('--learning_rate', type=float, required=False, default=1e-3)
+    parser.add_argument('--cell_type', type=str, required=False, default='GRU', help='should be "GRU" or "LSTM" ')
+    parser.add_argument('--lamda', type=float, required=False, default=1, help='coefficient that balances the prediction loss')
+    parser.add_argument('--D_epoch', type=int, required=False, default=1, help='frequency of updating dicriminator in an adversarial training epoch')
+    parser.add_argument('--GPU', type=str, required=False, default='0', help='GPU to use')
+
+    parser.add_argument('-path', '--checkpoint_path', type=str, required=False, default=None, help='Path of checkpoint model')
+    parser.add_argument('-save', '--save_checkpoint', default=False, action='store_true', help='Save model in checkpoint_path')
+    parser.add_argument('-load', '--load_checkpoint', default=False, action='store_true', help='Load model from checkpoint')
+    parser.add_argument('-v', '--verbose', nargs='?', type=int, const=1, default=2, help='Verbose mode')
 
     config = parser.parse_args()
     main(config)
