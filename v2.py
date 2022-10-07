@@ -151,7 +151,7 @@ class AJRNN(tf.keras.Model):
 
     def compile(self):
         super(AJRNN, self).compile()
-        self.g_optimizer = tf.keras.optimizers.Adam(1e-10)
+        self.g_optimizer = tf.keras.optimizers.Adam(1e-4)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-4)
 
@@ -161,82 +161,89 @@ class AJRNN(tf.keras.Model):
         self.imputation_loss = tf.keras.metrics.Mean(name="imputation_loss")
         self.regularization_loss = tf.keras.metrics.Mean(name="regularization_loss")
 
-        self.accuracy = tf.keras.metrics.Mean(name="accuracy")
-        #self.accuracy = tf.keras.metrics.Accuracy(name="accuracy")
+        self.accuracy = tf.keras.metrics.Accuracy(name="accuracy")
     
     @property
     def metrics(self):
-        return [self.discriminator_loss, self.generator_loss, self.classifier_loss, self.imputation_loss, self.regularization_loss,  self.accuracy]
+        return [self.discriminator_loss, self.generator_loss, self.classifier_loss, self.imputation_loss, self.regularization_loss, self.accuracy]
     
 
     def discriminator_step(self, inputs,mask, training=True):
-        dim_size = self.config.input_dimension_size
-        num_steps = self.config.num_steps
+        for _ in range(self.config.D_epoch):
 
-        prediction, _ = self.generator(inputs)
-    
-        prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])
-        M = tf.reshape(mask, [-1, (num_steps - 1) * dim_size])
+            dim_size = self.config.input_dimension_size
+            num_steps = self.config.num_steps
 
-
-        with tf.GradientTape() as tape:
-            predict_M = self.discriminator(prediction)
-            loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=M)
+            prediction, _ = self.generator(inputs)
         
-        if training:
-            grads = tape.gradient(loss, self.discriminator.trainable_variables)
-            self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_variables))
+            prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])
+            M = tf.reshape(mask, [-1, (num_steps - 1) * dim_size])
+
+
+            with tf.GradientTape() as tape:
+                predict_M = self.discriminator(prediction)
+                loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=M)
+            
+            if training:
+                grads = tape.gradient(loss, self.discriminator.trainable_variables)
+                self.d_optimizer.apply_gradients(zip(grads, self.discriminator.trainable_variables))
         
         self.discriminator_loss.update_state(loss)
 
 
     def generator_step(self, inputs, prediction_target, mask, label_target, training=True):
+        for _ in range(self.config.G_epoch if training else 1):
+            dim_size = self.config.input_dimension_size
+            num_steps = self.config.num_steps
+            batch_size = self.config.batch_size
 
-        dim_size = self.config.input_dimension_size
-        num_steps = self.config.num_steps
-        batch_size = self.config.batch_size
+
+            with tf.GradientTape() as tape:
+                prediction, last_cell = self.generator(inputs)
+
+                with tf.GradientTape() as classifier_tape:
+                    label_logits = self.classifier(last_cell)
+                    loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
+                
+                # reshape prediction_target and corresponding mask  into [batch * (numsteps-1), hidden_size]
+                prediction_targets = tf.reshape(prediction_target, [-1, dim_size])
+                masks = tf.reshape(mask, [-1, dim_size])
+
+                # loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
+                loss_imputation = tf.square( (prediction_targets - prediction) * masks ) / (self.config.batch_size)
+
+                
+                regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in self.generator.trainable_weights)
 
 
-        with tf.GradientTape() as tape:
-            prediction, last_cell = self.generator(inputs)
-
-            with tf.GradientTape() as classifier_tape:
-                label_logits = self.classifier(last_cell)
-                loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
             
-            # reshape prediction_target and corresponding mask  into [batch * (numsteps-1), hidden_size]
-            prediction_targets = tf.reshape(prediction_target, [-1, dim_size])
-            masks = tf.reshape(mask, [-1, dim_size])
+                prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])
+                M = tf.reshape(mask, [-1, (num_steps - 1) * dim_size])
+                prediction_target = tf.reshape(prediction_target, [-1, (num_steps - 1) * dim_size])
+                
+                real_pre = prediction * (1 - M) + prediction_target * M
+                real_pre = tf.reshape(real_pre, [batch_size, (num_steps-1)*dim_size])
 
-            loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
-            
-            regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in self.generator.trainable_weights)
+                predict_M = self.discriminator(real_pre)
+                predict_M = tf.reshape(predict_M, [-1, (num_steps-1)*dim_size])
+                
+
+                #G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
+                G_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M)
+
+                loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
 
 
-           
-            prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])
-            M = tf.reshape(mask, [-1, (num_steps - 1) * dim_size])
-            prediction_target = tf.reshape(prediction_target, [-1, (num_steps - 1) * dim_size])
-            
-            real_pre = prediction * (1 - M) + prediction_target * M
-            real_pre = tf.reshape(real_pre, [batch_size, (num_steps-1)*dim_size])
+                total_G_loss = loss_imputation + G_loss + regularization_loss
 
-            predict_M = self.discriminator(real_pre)
-            predict_M = tf.reshape(predict_M, [-1, (num_steps-1)*dim_size])
-            
+            if training:
+                # update classifier
+                grads = classifier_tape.gradient(loss_classification, self.classifier.trainable_variables)
+                self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
 
-            G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
-
-            total_G_loss = G_loss + regularization_loss
-
-        if training:
-            # update classifier
-            grads = classifier_tape.gradient(loss_classification, self.classifier.trainable_variables)
-            self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
-
-            # update generator
-            grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
-            self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_variables))
+                # update generator
+                grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
+                self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_variables))
 
         self.regularization_loss.update_state(regularization_loss)
         self.imputation_loss.update_state(loss_imputation)   
@@ -245,11 +252,7 @@ class AJRNN(tf.keras.Model):
         
         # for get the classfication accuracy, label_predict has shape (batch_size, self.class_num)
         label_predict = tf.nn.softmax(label_logits, name='test_probab')
-        correct_predictions = tf.equal(
-            tf.argmax(input=label_predict, axis=1), tf.argmax(input=label_target, axis=1))
-        accuracy = tf.cast(correct_predictions, tf.float32, name='accuracy')
-        self.accuracy.update_state(accuracy)
-        #self.accuracy.update_state(tf.argmax(label_target, axis=1), tf.argmax(label_predict, axis=1))
+        self.accuracy.update_state(tf.argmax(label_target, axis=1), tf.argmax(label_predict, axis=1))
        
 
         
@@ -257,21 +260,17 @@ class AJRNN(tf.keras.Model):
     def train_step(self, data, training=True):
         inputs, prediction_target, mask, label_target = data
 
-        
-        for _ in range(self.config.D_epoch):
-            self.discriminator_step(inputs, mask, training=training)
-
-        for _ in range(self.config.G_epoch):
-            self.generator_step(inputs, prediction_target, mask, label_target, training=training)
+        self.discriminator_step(inputs, mask, training=training)
+        self.generator_step(inputs, prediction_target, mask, label_target, training=training)
 
 
         return {
             "accuracy": self.accuracy.result(),
-            "discriminator_loss": self.discriminator_loss.result(),
-            "classifier_loss": self.classifier_loss.result(),
-            "generator_loss": self.generator_loss.result(),
-            "imputation_loss": self.imputation_loss.result(),
-            "regularization_loss": self.regularization_loss.result()
+            "c_loss": self.classifier_loss.result(),
+            "d_loss": self.discriminator_loss.result(),
+            "g_loss": self.generator_loss.result(),
+            "imp_loss": self.imputation_loss.result(),
+            "reg_loss": self.regularization_loss.result()
         }
 
     def test_step(self, data):
