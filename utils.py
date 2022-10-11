@@ -131,7 +131,7 @@ def get_idx_of_object_ids(ids, lut):
     tot_idx = np.concatenate(tot_idx, axis=0)
     return tot_idx
 
-def get_split_idx(lut, train_perc=.6, val_perc=.2, test_perc=.2):
+def get_split_idx(lut, train_perc=.6, val_perc=.2):
     train_idx, valid_idx, test_idx = [], [], []
     unique_ids_by_class = get_unique_ids_by_class(lut)
 
@@ -141,7 +141,6 @@ def get_split_idx(lut, train_perc=.6, val_perc=.2, test_perc=.2):
         
         limit_train = int(len(ids)* train_perc )
         limit_val = limit_train + int(len(ids)* val_perc)
-        limit_test = limit_val + int(len(ids)* test_perc)
         
         
         train_idx.extend(get_idx_of_object_ids(ids[0:limit_train], lut))
@@ -158,7 +157,7 @@ def generate_dataset(idx, data, prediction_target, mask, labels, num_classes):
     return tf.data.Dataset.from_tensor_slices((data_subset, prediction_target_subset, mask_subset, labels_subset ))
 
 
-def load_sits():
+def load_sits(smaller_dataset=False):
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
     lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
@@ -180,14 +179,15 @@ def load_sits():
     mask = mask.reshape(-1, num_steps - 1, num_bands)
 
 
-    # train 0.6, val 0.2, test 0.2
+    train, val = 0.6, 0.2
+    if smaller_dataset:
+        train, val = 0.15, 0.15
+
     # train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
-    train_idx, val_idx, test_idx = get_split_idx(lut)
+    train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val)
     train_dataset = generate_dataset(train_idx, data, prediction_target, mask, labels, num_classes)
     val_dataset = generate_dataset(val_idx, data, prediction_target, mask, labels, num_classes)
     test_dataset = generate_dataset(test_idx, data, prediction_target, mask, labels, num_classes)
-    #print('train:', train_dataset.shape, 'val:', val_dataset.shape, 'test:', test_dataset.shape)
-    #print(train_dataset)
 
 
     return train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands
@@ -195,9 +195,9 @@ def load_sits():
 
     
 
-def load(train, test):
+def load(train, test, smaller_dataset=False):
     if train == 'SITS':
-        return load_sits()
+        return load_sits(smaller_dataset)
     
     train_dataset, num_classes, num_steps, num_bands = load_dataset(train, True)
     v_dataset = load_dataset(test, False)

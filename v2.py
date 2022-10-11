@@ -33,6 +33,7 @@ class Config(object):
     checkpoint_path = None
     save_checkpoint = False
     load_checkpoint = False
+    smaller_dataset = False
     verbose = 2
 
 
@@ -294,11 +295,11 @@ class AJRNN(tf.keras.Model):
         return {"accuracy": self.accuracy.result()}
 
 
-def main(config:Config):
+def main(config: Config):
 
     print(f"Training w/ {config.train_data_filename}")
     
-    train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
+    train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename, config.smaller_dataset)
 
     config.num_steps = num_steps
     config.input_dimension_size = num_bands
@@ -378,6 +379,7 @@ if __name__ == "__main__":
     parser.add_argument('-path', '--checkpoint_path', type=str, required=False, default=None, help='Path of checkpoint model')
     parser.add_argument('-save', '--save_checkpoint', default=False, action='store_true', help='Save model in checkpoint_path')
     parser.add_argument('-load', '--load_checkpoint', default=False, action='store_true', help='Load model from checkpoint')
+    parser.add_argument('-small', '--smaller_dataset', default=False, action='store_true', help='Load smaller dataset')
     parser.add_argument('-v', '--verbose', nargs='?', type=int, const=1, default=2, help='Verbose mode')
 
     config = parser.parse_args()
