@@ -167,7 +167,7 @@ class AJRNN(tf.keras.Model):
 
         self.g_optimizer = tf.keras.optimizers.Adam(0)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
-        self.classifier_optimizer = tf.keras.optimizers.Adam(1e-4)
+        self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
 
         self.discriminator_loss = tf.keras.metrics.Mean(name="discriminator_loss")
         self.classifier_loss = tf.keras.metrics.Mean(name="classifier_loss")
@@ -238,26 +238,21 @@ class AJRNN(tf.keras.Model):
 
                 loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
 
-                #total_G_loss = loss_imputation + G_loss + regularization_loss
-                total_G_loss = G_loss + regularization_loss
+                total_G_loss = loss_imputation + G_loss + regularization_loss
 
             if training:
-                # update classifier
-                # grads = classifier_tape.gradient(loss_classification, self.classifier.trainable_variables)
-                # self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
-
                 # update generator
                 grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
                 self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_variables))
 
-        with tf.GradientTape() as classifier_tape:
-                    label_logits = self.classifier(last_cell)
-                    loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
+        with tf.GradientTape() as tape:
+            label_logits = self.classifier(last_cell)
+            loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
 
         if training:
-                # update classifier
-                grads = classifier_tape.gradient(loss_classification, self.classifier.trainable_variables)
-                self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
+            # update classifier
+            grads = tape.gradient(loss_classification, self.classifier.trainable_variables)
+            self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
 
         self.regularization_loss.update_state(regularization_loss)
         self.imputation_loss.update_state(loss_imputation)   

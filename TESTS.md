@@ -30,6 +30,8 @@ history: `tests/2-200epochs.txt`
 
 # Test 3
 
+Commit [eedadc85908f5f4e3dfd8bc4abde8edd5e984ebf](https://github.com/dnldsht/AJ-RNN/commit/eedadc85908f5f4e3dfd8bc4abde8edd5e984ebf)
+
 ### relevant changes
 
 ```python
@@ -38,3 +40,13 @@ total_G_loss = G_loss + 1e-4 * regularization_loss
 ```
 
 - classifier update weights outside generator epochs
+
+# Test 4
+
+### relevant changes
+
+```python
+self.g_optimizer = tf.keras.optimizers.Adam(0)
+self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
+total_G_loss = loss_imputation + 1e-4 * regularization_loss
+```
