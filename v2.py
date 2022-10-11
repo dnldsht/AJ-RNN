@@ -151,7 +151,7 @@ class AJRNN(tf.keras.Model):
 
     def compile(self):
         super(AJRNN, self).compile()
-        self.g_optimizer = tf.keras.optimizers.Adam(1e-4)
+        self.g_optimizer = tf.keras.optimizers.Adam(1e-9)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-4)
 

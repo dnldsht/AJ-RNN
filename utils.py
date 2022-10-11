@@ -137,7 +137,7 @@ def get_split_idx(lut, train_perc=.6, val_perc=.2, test_perc=.2):
 
     for label in unique_ids_by_class:
         ids = unique_ids_by_class[label]
-        ids = shuffle(ids)
+        ids = shuffle(ids, random_state=23)
         
         limit_train = int(len(ids)* train_perc )
         limit_val = limit_train + int(len(ids)* val_perc)
