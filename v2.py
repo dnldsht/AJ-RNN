@@ -27,6 +27,7 @@ class Config(object):
     epoch = None  # epoch for train
     lamda_D = None  # epoch for training of Discriminator
     G_epoch = None  # epoch for training of Generator
+    batches = None
     train_data_filename = None
     test_data_filename = None
     checkpoint_path = None
@@ -135,12 +136,18 @@ class Generator(layers.Layer):
         return prediction, last_cell
 
 
+class MyLRSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
+  def __init__(self, initial_learning_rate):
+    self.initial_learning_rate = initial_learning_rate
+
+  def __call__(self, step):
+     return self.initial_learning_rate / (step + 1)
 
 
 class AJRNN(tf.keras.Model):
 
-    def __init__(self, config, *args, **kwargs):
+    def __init__(self, config: Config, *args, **kwargs):
         super().__init__(name='AJRNN', *args, **kwargs, )
         self.config = config
         self.generator = Generator(config)
@@ -151,7 +158,13 @@ class AJRNN(tf.keras.Model):
 
     def compile(self):
         super(AJRNN, self).compile()
-        self.g_optimizer = tf.keras.optimizers.Adam(1e-9)
+
+        # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        #         initial_learning_rate=1e-4,
+        #         decay_steps=config.batches * config.G_epoch,
+        #         decay_rate=0.96)
+
+        self.g_optimizer = tf.keras.optimizers.Adam(0)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-4)
 
@@ -200,21 +213,13 @@ class AJRNN(tf.keras.Model):
 
             with tf.GradientTape() as tape:
                 prediction, last_cell = self.generator(inputs)
-
-                with tf.GradientTape() as classifier_tape:
-                    label_logits = self.classifier(last_cell)
-                    loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
                 
                 # reshape prediction_target and corresponding mask  into [batch * (numsteps-1), hidden_size]
                 prediction_targets = tf.reshape(prediction_target, [-1, dim_size])
                 masks = tf.reshape(mask, [-1, dim_size])
 
-                # loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
                 loss_imputation = tf.square( (prediction_targets - prediction) * masks ) / (self.config.batch_size)
-
-                
                 regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in self.generator.trainable_weights)
-
 
             
                 prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])
@@ -228,22 +233,30 @@ class AJRNN(tf.keras.Model):
                 predict_M = tf.reshape(predict_M, [-1, (num_steps-1)*dim_size])
                 
 
-                #G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
                 G_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M)
 
                 loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
 
-
-                total_G_loss = loss_imputation + G_loss + regularization_loss
+                #total_G_loss = loss_imputation + G_loss + regularization_loss
+                total_G_loss = G_loss + regularization_loss
 
             if training:
                 # update classifier
-                grads = classifier_tape.gradient(loss_classification, self.classifier.trainable_variables)
-                self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
+                # grads = classifier_tape.gradient(loss_classification, self.classifier.trainable_variables)
+                # self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
 
                 # update generator
                 grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
                 self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_variables))
+
+        with tf.GradientTape() as classifier_tape:
+                    label_logits = self.classifier(last_cell)
+                    loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
+
+        if training:
+                # update classifier
+                grads = classifier_tape.gradient(loss_classification, self.classifier.trainable_variables)
+                self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
 
         self.regularization_loss.update_state(regularization_loss)
         self.imputation_loss.update_state(loss_imputation)   
@@ -284,24 +297,26 @@ class AJRNN(tf.keras.Model):
 def main(config:Config):
 
     print(f"Training w/ {config.train_data_filename}")
-    print(f"Config {config.__dict__}")
     
-
     train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename)
 
     config.num_steps = num_steps
     config.input_dimension_size = num_bands
     config.class_num = num_classes
 
-
-    model = AJRNN(config)
-    model.compile()
-
     train_dataset = train_dataset.batch(
         config.batch_size, drop_remainder=True)
 
     validation_dataset = val_dataset.batch(
         config.batch_size, drop_remainder=True)
+
+    config.batches = train_dataset.cardinality().numpy()
+
+    print(f"Config {config.__dict__}")
+
+
+    model = AJRNN(config)
+    model.compile()
 
     callbacks = []
 

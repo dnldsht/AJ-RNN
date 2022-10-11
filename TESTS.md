@@ -27,3 +27,14 @@ history: `tests/2-200epochs.txt`
 - accuracy: 0.8329
 - val_accuracy: 0.7672
 - test_accuracy: 0.7713
+
+# Test 3
+
+### relevant changes
+
+```python
+self.g_optimizer = tf.keras.optimizers.Adam(0)
+total_G_loss = G_loss + 1e-4 * regularization_loss
+```
+
+- classifier update weights outside generator epochs
