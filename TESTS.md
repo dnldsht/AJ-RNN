@@ -43,6 +43,8 @@ total_G_loss = G_loss + 1e-4 * regularization_loss
 
 # Test 4
 
+Commit [b6cca3b85c4c6c6457645a867ef3d1d3ce478540](https://github.com/dnldsht/AJ-RNN/commit/b6cca3b85c4c6c6457645a867ef3d1d3ce478540)
+
 ### relevant changes
 
 ```python
