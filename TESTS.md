@@ -61,6 +61,8 @@ total_G_loss = loss_imputation + G_loss + 1e-4 * regularization_loss
 
 # Test 5
 
+Commit [c4378ef54cb4d6b0e3084a64f6aaacd0a2dd2daa](https://github.com/dnldsht/AJ-RNN/commit/c4378ef54cb4d6b0e3084a64f6aaacd0a2dd2daa)
+
 ### relevant changes
 
 - batch_size: 256
