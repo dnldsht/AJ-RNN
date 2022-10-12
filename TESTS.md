@@ -43,6 +43,12 @@ total_G_loss = G_loss + 1e-4 * regularization_loss
 
 # Test 4
 
+history: `tests/4-300e.txt`
+
+- accuracy: 0.8832
+- val_accuracy: 0.6605
+- test_accuracy: 0.610
+
 Commit [b6cca3b85c4c6c6457645a867ef3d1d3ce478540](https://github.com/dnldsht/AJ-RNN/commit/b6cca3b85c4c6c6457645a867ef3d1d3ce478540)
 
 ### relevant changes
@@ -50,5 +56,5 @@ Commit [b6cca3b85c4c6c6457645a867ef3d1d3ce478540](https://github.com/dnldsht/AJ-
 ```python
 self.g_optimizer = tf.keras.optimizers.Adam(0)
 self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
-total_G_loss = loss_imputation + 1e-4 * regularization_loss
+total_G_loss = loss_imputation + G_loss + 1e-4 * regularization_loss
 ```
