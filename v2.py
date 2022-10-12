@@ -165,7 +165,7 @@ class AJRNN(tf.keras.Model):
         #         decay_steps=config.batches * config.G_epoch,
         #         decay_rate=0.96)
 
-        self.g_optimizer = tf.keras.optimizers.Adam(1e-7)
+        self.g_optimizer = tf.keras.optimizers.Adam(1e-6)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
 
