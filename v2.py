@@ -346,7 +346,8 @@ def main(config: Config):
 
     print()
     print("History training")
-    print(history.history)
+    utils.print_history(history.history)
+    
 
     if test_dataset is not None:
         test_dataset = test_dataset.batch(
