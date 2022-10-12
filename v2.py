@@ -165,13 +165,14 @@ class AJRNN(tf.keras.Model):
         #         decay_steps=config.batches * config.G_epoch,
         #         decay_rate=0.96)
 
-        self.g_optimizer = tf.keras.optimizers.Adam(0)
+        self.g_optimizer = tf.keras.optimizers.Adam(1e-7)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
 
         self.discriminator_loss = tf.keras.metrics.Mean(name="discriminator_loss")
         self.classifier_loss = tf.keras.metrics.Mean(name="classifier_loss")
         self.generator_loss = tf.keras.metrics.Mean(name="generator_loss")
+        self.total_generator_loss = tf.keras.metrics.Mean(name="total_generator_loss")
         self.imputation_loss = tf.keras.metrics.Mean(name="imputation_loss")
         self.regularization_loss = tf.keras.metrics.Mean(name="regularization_loss")
 
@@ -179,7 +180,7 @@ class AJRNN(tf.keras.Model):
     
     @property
     def metrics(self):
-        return [self.discriminator_loss, self.generator_loss, self.classifier_loss, self.imputation_loss, self.regularization_loss, self.accuracy]
+        return [self.discriminator_loss, self.generator_loss, self.classifier_loss, self.total_generator_loss, self.imputation_loss, self.regularization_loss, self.accuracy]
     
 
     def discriminator_step(self, inputs,mask, training=True):
@@ -247,6 +248,9 @@ class AJRNN(tf.keras.Model):
 
         with tf.GradientTape() as tape:
             label_logits = self.classifier(last_cell)
+
+            # NOTE: softmax_cross_entropy_with_logits
+            # Measures the probability error in discrete classification tasks in which the classes are mutually exclusive (each entry is in exactly one class)
             loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
 
         if training:
@@ -258,6 +262,7 @@ class AJRNN(tf.keras.Model):
         self.imputation_loss.update_state(loss_imputation)   
         self.generator_loss.update_state(G_loss)
         self.classifier_loss.update_state(loss_classification)
+        self.total_generator_loss.update_state(total_G_loss)
         
         # for get the classfication accuracy, label_predict has shape (batch_size, self.class_num)
         label_predict = tf.nn.softmax(label_logits, name='test_probab')
@@ -279,7 +284,8 @@ class AJRNN(tf.keras.Model):
             "d_loss": self.discriminator_loss.result(),
             "g_loss": self.generator_loss.result(),
             "imp_loss": self.imputation_loss.result(),
-            "reg_loss": self.regularization_loss.result()
+            "reg_loss": self.regularization_loss.result(),
+            "total_g_loss": self.total_generator_loss.result()
         }
 
     def test_step(self, data):

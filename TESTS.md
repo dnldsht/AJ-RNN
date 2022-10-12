@@ -58,3 +58,14 @@ self.g_optimizer = tf.keras.optimizers.Adam(0)
 self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
 total_G_loss = loss_imputation + G_loss + 1e-4 * regularization_loss
 ```
+
+# Test 5
+
+### relevant changes
+
+- batch_size: 256
+- logged total_G_loss
+
+```python
+self.g_optimizer = tf.keras.optimizers.Adam(1e-7)
+```
