@@ -74,6 +74,8 @@ self.g_optimizer = tf.keras.optimizers.Adam(1e-7)
 
 # Test 6
 
+Commit [c93fec7f23e3a9bd8375da305e92b988a3f306b1](https://github.com/dnldsht/AJ-RNN/commit/c93fec7f23e3a9bd8375da305e92b988a3f306b1)
+
 ### relevant changes
 
 - batch_size: 512 (sophia)
