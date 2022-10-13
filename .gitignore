@@ -141,3 +141,4 @@ cython_debug/
 logs/*
 models/*
 SITS-Missing-Data/*
+sits/*
