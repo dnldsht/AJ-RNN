@@ -92,6 +92,8 @@ self.g_optimizer = tf.keras.optimizers.Adam(1e-7)
 
 ## 300 epochs
 
+history: `tests/6-300e.txt`
+
 - accuracy: 0.3882
 - val_accuracy: 0.3353 (max: 0.73327)
 - test_accuracy: 0.28116
@@ -111,11 +113,13 @@ total_G_loss = loss_imputation + G_loss + 1e-4 * regularization_loss
 
 ## 300 epochs
 
+history: `tests/7-300e.txt`
+
 - accuracy:
 - val_accuracy:
 - test_accuracy:
 
-Commit [](https://github.com/dnldsht/AJ-RNN/commit)
+Commit [f019726cea4d47b75b541bf2299abfbb7ad4a6be](https://github.com/dnldsht/AJ-RNN/commit/f019726cea4d47b75b541bf2299abfbb7ad4a6be)
 
 ### relevant changes
 
