@@ -32,6 +32,12 @@ history: `tests/2-200epochs.txt`
 
 Commit [eedadc85908f5f4e3dfd8bc4abde8edd5e984ebf](https://github.com/dnldsht/AJ-RNN/commit/eedadc85908f5f4e3dfd8bc4abde8edd5e984ebf)
 
+## 200 epochs
+
+- accuracy: 0.8018
+- val_accuracy: 0.81555
+- test_accuracy: 0.7491788
+
 ### relevant changes
 
 ```python
@@ -42,6 +48,8 @@ total_G_loss = G_loss + 1e-4 * regularization_loss
 - classifier update weights outside generator epochs
 
 # Test 4
+
+## 300 epochs
 
 history: `tests/4-300e.txt`
 
@@ -60,6 +68,8 @@ total_G_loss = loss_imputation + G_loss + 1e-4 * regularization_loss
 ```
 
 # Test 5
+
+## 300 epochs
 
 history: `tests/5-300e.txt`
 
@@ -80,6 +90,12 @@ self.g_optimizer = tf.keras.optimizers.Adam(1e-7)
 
 # Test 6
 
+## 300 epochs
+
+- accuracy: 0.3882
+- val_accuracy: 0.3353 (max: 0.73327)
+- test_accuracy: 0.28116
+
 Commit [c93fec7f23e3a9bd8375da305e92b988a3f306b1](https://github.com/dnldsht/AJ-RNN/commit/c93fec7f23e3a9bd8375da305e92b988a3f306b1)
 
 ### relevant changes
@@ -89,4 +105,23 @@ Commit [c93fec7f23e3a9bd8375da305e92b988a3f306b1](https://github.com/dnldsht/AJ-
 ```python
 self.g_optimizer = tf.keras.optimizers.Adam(1e-6)
 total_G_loss = loss_imputation + G_loss + 1e-4 * regularization_loss
+```
+
+# Test 7
+
+## 300 epochs
+
+- accuracy:
+- val_accuracy:
+- test_accuracy:
+
+Commit [](https://github.com/dnldsht/AJ-RNN/commit)
+
+### relevant changes
+
+- batch_size: 256
+
+```python
+self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
+total_G_loss = 1e-4 *loss_imputation + G_loss + 1e-4 * regularization_loss
 ```

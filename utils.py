@@ -78,7 +78,7 @@ def check_missing_ratio(masks):
 def print_history(h):
   for key, value in h.items():
     values = list(map(lambda x: round(x, 4), value))
-    print(f"{key}: {values}")
+    print(f"'{key}': {values},")
 
 
 def get_dataset_partitions_tf(ds, train_split=0.8, val_split=0.1, test_split=0.1, shuffle=True, shuffle_size=10000):

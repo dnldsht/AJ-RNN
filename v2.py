@@ -165,7 +165,7 @@ class AJRNN(tf.keras.Model):
         #         decay_steps=config.batches * config.G_epoch,
         #         decay_rate=0.96)
 
-        self.g_optimizer = tf.keras.optimizers.Adam(1e-6)
+        self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
 
@@ -239,7 +239,7 @@ class AJRNN(tf.keras.Model):
 
                 loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
 
-                total_G_loss = loss_imputation + G_loss + regularization_loss
+                total_G_loss = 1e-4 * loss_imputation + G_loss + regularization_loss
 
             if training:
                 # update generator
@@ -332,6 +332,7 @@ def main(config: Config):
                 verbose=1,
                 save_best_only=True)
         )
+        print(f"will save weights in {config.checkpoint_path}")
 
     if config.load_checkpoint:
         print(f"loading weights from {config.checkpoint_path}")
