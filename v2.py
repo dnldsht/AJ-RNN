@@ -239,7 +239,7 @@ class AJRNN(tf.keras.Model):
 
                 loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
 
-                total_G_loss = 1e-4 * loss_imputation + G_loss + regularization_loss
+                total_G_loss = 1e-3 * loss_imputation + G_loss + regularization_loss
 
             if training:
                 # update generator
