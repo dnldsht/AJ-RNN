@@ -115,9 +115,9 @@ total_G_loss = loss_imputation + G_loss + 1e-4 * regularization_loss
 
 history: `tests/7-300e.txt`
 
-- accuracy:
-- val_accuracy:
-- test_accuracy:
+- accuracy: 0.8120
+- val_accuracy: 0.8282
+- test_accuracy: 0.77026
 
 Commit [f019726cea4d47b75b541bf2299abfbb7ad4a6be](https://github.com/dnldsht/AJ-RNN/commit/f019726cea4d47b75b541bf2299abfbb7ad4a6be)
 
