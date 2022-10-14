@@ -129,3 +129,24 @@ Commit [f019726cea4d47b75b541bf2299abfbb7ad4a6be](https://github.com/dnldsht/AJ-
 self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
 total_G_loss = 1e-4 *loss_imputation + G_loss + 1e-4 * regularization_loss
 ```
+
+# Test 8
+
+## 300 epochs
+
+history: `tests/8-300e.txt`
+
+- accuracy:
+- val_accuracy:
+- test_accuracy:
+
+Commit [872c11b74fb2e9aacb7f956518c5c086c3e36418](https://github.com/dnldsht/AJ-RNN/commit/872c11b74fb2e9aacb7f956518c5c086c3e36418)
+
+### relevant changes
+
+- batch_size: 256
+
+```python
+self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
+total_G_loss = 1e-3 *loss_imputation + G_loss + 1e-4 * regularization_loss
+```
