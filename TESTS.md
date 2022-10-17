@@ -156,5 +156,33 @@ Commit [872c11b74fb2e9aacb7f956518c5c086c3e36418](https://github.com/dnldsht/AJ-
 
 ```python
 self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
-total_G_loss = 1e-3 *loss_imputation + G_loss + 1e-4 * regularization_loss
+total_G_loss = 1e-3 * loss_imputation + G_loss + 1e-4 * regularization_loss
+```
+
+# Test 9
+
+## 300 epochs
+
+history: `tests/9-300e.txt`
+
+- accuracy:
+- val_accuracy:
+- test_accuracy:
+
+### relevant changes
+
+- batch_size: 256
+
+```python
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+              initial_learning_rate=1e-5,
+              decay_steps=config.batches * config.G_epoch,
+              decay_rate=0.97,
+              staircase=True)
+
+self.g_optimizer = tf.keras.optimizers.Adam(lr_schedule)
+
+
+total_G_loss = 1e-3 * loss_imputation + G_loss + 1e-4 * regularization_loss
+
 ```

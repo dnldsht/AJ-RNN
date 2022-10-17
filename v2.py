@@ -160,12 +160,13 @@ class AJRNN(tf.keras.Model):
     def compile(self):
         super(AJRNN, self).compile()
 
-        # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        #         initial_learning_rate=1e-4,
-        #         decay_steps=config.batches * config.G_epoch,
-        #         decay_rate=0.96)
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+              initial_learning_rate=1e-5,
+              decay_steps=config.batches * config.G_epoch,
+              decay_rate=0.97,
+              staircase=True)
 
-        self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
+        self.g_optimizer = tf.keras.optimizers.Adam(lr_schedule)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
 
