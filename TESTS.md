@@ -161,6 +161,8 @@ total_G_loss = 1e-3 * loss_imputation + G_loss + 1e-4 * regularization_loss
 
 # Test 9
 
+Commit [737adbb9a7e038437ef717b72061a3a393066049](https://github.com/dnldsht/AJ-RNN/commit/737adbb9a7e038437ef717b72061a3a393066049)
+
 ## 300 epochs
 
 history: `tests/9-300e.txt`
