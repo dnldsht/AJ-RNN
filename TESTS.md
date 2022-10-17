@@ -136,6 +136,14 @@ total_G_loss = 1e-4 *loss_imputation + G_loss + 1e-4 * regularization_loss
 
 history: `tests/8-300e.txt`
 
+- accuracy: 0.8063
+- val_accuracy: 0.8221
+- test_accuracy: 0.7586
+
+## 300+300 epochs
+
+history: `tests/8.1-600e.txt`
+
 - accuracy:
 - val_accuracy:
 - test_accuracy:
