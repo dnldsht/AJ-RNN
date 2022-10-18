@@ -162,6 +162,40 @@ def generate_dataset(idx, data, prediction_target, mask, labels, num_classes):
     return tf.data.Dataset.from_tensor_slices((data_subset, prediction_target_subset, mask_subset, labels_subset ))
 
 
+def load_sits_rf():
+    data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
+    masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
+    lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
+    
+    data[np.where(masks == 1)] = MISSING_VALUE
+
+    num_steps = data.shape[1]
+    num_bands = data.shape[2]
+    labels, num_classes = transfer_labels(lut[:, 1])
+    # labels = convert_to_one_hot(labels, num_classes=len(np.unique(labels)))
+    prediction_target = data[:, 1:]
+    mask = np.ones_like(prediction_target)
+    mask[np.where(prediction_target == MISSING_VALUE)] = 0
+
+    check_missing_ratio(np.array(mask))
+
+    data = data.reshape(-1, num_steps, num_bands)
+    prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
+    mask = mask.reshape(-1, num_steps - 1, num_bands)
+
+
+    train, val = 0.6, 0.2
+    
+
+    # train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
+    train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val)
+    train_dataset = tf.data.Dataset.from_tensor_slices((data[train_idx], labels[train_idx]))
+    val_dataset = tf.data.Dataset.from_tensor_slices((data[val_idx], labels[val_idx]))
+    test_dataset = tf.data.Dataset.from_tensor_slices((data[test_idx], labels[test_idx]))
+
+
+    return train_dataset, val_dataset, test_dataset
+
 def load_sits(smaller_dataset=False):
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
