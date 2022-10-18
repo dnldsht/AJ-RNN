@@ -161,15 +161,17 @@ total_G_loss = 1e-3 * loss_imputation + G_loss + 1e-4 * regularization_loss
 
 # Test 9
 
+NOTE: redo test and log learning rate
+
 Commit [737adbb9a7e038437ef717b72061a3a393066049](https://github.com/dnldsht/AJ-RNN/commit/737adbb9a7e038437ef717b72061a3a393066049)
 
 ## 300 epochs
 
 history: `tests/9-300e.txt`
 
-- accuracy:
-- val_accuracy:
-- test_accuracy:
+- accuracy: 0.3882
+- val_accuracy: 0.3353
+- test_accuracy: 0.281
 
 ### relevant changes
 
@@ -187,4 +189,25 @@ self.g_optimizer = tf.keras.optimizers.Adam(lr_schedule)
 
 total_G_loss = 1e-3 * loss_imputation + G_loss + 1e-4 * regularization_loss
 
+```
+
+# Test 10
+
+## 300 epochs
+
+history: `tests/10-300e.txt`
+
+- accuracy:
+- val_accuracy:
+- test_accuracy:
+
+### relevant changes
+
+- batch_size: 256
+
+```python
+self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
+total_G_loss = 1e-3 * loss_imputation + G_loss + 1e-4 * regularization_loss
+
+# cell-type = LSTM
 ```
