@@ -201,6 +201,8 @@ history: `tests/10-300e.txt`
 - val_accuracy:
 - test_accuracy:
 
+Commit [b02628c15dabed2561cf396eb8c492f0a0788679](https://github.com/dnldsht/AJ-RNN/commit/b02628c15dabed2561cf396eb8c492f0a0788679)
+
 ### relevant changes
 
 - batch_size: 256
