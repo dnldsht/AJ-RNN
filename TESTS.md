@@ -144,9 +144,9 @@ history: `tests/8-300e.txt`
 
 history: `tests/8.1-600e.txt`
 
-- accuracy:
-- val_accuracy:
-- test_accuracy:
+- accuracy: 0.8133
+- val_accuracy: 0.828
+- test_accuracy: 0.7748
 
 Commit [872c11b74fb2e9aacb7f956518c5c086c3e36418](https://github.com/dnldsht/AJ-RNN/commit/872c11b74fb2e9aacb7f956518c5c086c3e36418)
 
