@@ -152,7 +152,7 @@ class AJRNN(tf.keras.Model):
 
             with tf.GradientTape() as tape:
                 predict_M = self.discriminator(prediction)
-                loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=M)
+                loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=M))
             
             if training:
                 grads = tape.gradient(loss, self.discriminator.trainable_variables)
@@ -175,7 +175,7 @@ class AJRNN(tf.keras.Model):
                 prediction_targets = tf.reshape(prediction_target, [-1, dim_size])
                 masks = tf.reshape(mask, [-1, dim_size])
 
-                loss_imputation = tf.square( (prediction_targets - prediction) * masks ) / (self.config.batch_size)
+                loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
                 regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in self.generator.trainable_weights)
 
             
@@ -190,11 +190,11 @@ class AJRNN(tf.keras.Model):
                 predict_M = tf.reshape(predict_M, [-1, (num_steps-1)*dim_size])
                 
 
-                G_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M)
+                G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
 
-                loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
+                #loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
 
-                total_G_loss = 1e-3 * loss_imputation + G_loss + regularization_loss
+                total_G_loss = loss_imputation + G_loss + regularization_loss
 
             if training:
                 # update generator
