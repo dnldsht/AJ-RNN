@@ -180,6 +180,15 @@ def load_sits_rf():
     check_missing_ratio(np.array(mask))
 
     data = data.reshape(-1, num_steps, num_bands)
+
+    #data = {f"time{i}":data[:,i] for i in range(data.shape[-2])}
+    def map_data(d):
+        return {
+            f"time({t})::band({b})": d[:,t,b]
+                for t in range(d.shape[-2])
+                    for b in range(d.shape[-1])
+        }
+    
     prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
     mask = mask.reshape(-1, num_steps - 1, num_bands)
 
@@ -189,9 +198,12 @@ def load_sits_rf():
 
     # train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
     train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val)
-    train_dataset = tf.data.Dataset.from_tensor_slices((data[train_idx], labels[train_idx]))
-    val_dataset = tf.data.Dataset.from_tensor_slices((data[val_idx], labels[val_idx]))
-    test_dataset = tf.data.Dataset.from_tensor_slices((data[test_idx], labels[test_idx]))
+    #return (map_data(data[train_idx]), labels[train_idx]), None, None
+    train_dataset = tf.data.Dataset.from_tensors((map_data(data[train_idx]), labels[train_idx]))
+    val_dataset = tf.data.Dataset.from_tensors((map_data(data[val_idx]), labels[val_idx]))
+    test_dataset = tf.data.Dataset.from_tensors((map_data(data[test_idx]), labels[test_idx]))
+    
+    
 
 
     return train_dataset, val_dataset, test_dataset

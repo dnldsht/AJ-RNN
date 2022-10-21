@@ -1,4 +1,4 @@
-#import tensorflow as tf
+import tensorflow as tf
 from config import  Config
 import tensorflow_decision_forests as tfdf
 
@@ -6,30 +6,29 @@ import utils
 import argparse
 
 
-#tf.config.set_visible_devices([], 'GPU')
+tf.config.set_visible_devices([], 'GPU')
 
 
 def main(config: Config):
 
     print(f"Training w/ {config.train_data_filename}")
     
-    train_dataset, val_dataset, test_dataset = utils.load_sits_rf()
+    train_dataset, validation_dataset, test_dataset = utils.load_sits_rf()
 
     
+    # train_dataset = train_dataset.batch(
+    #     config.batch_size, drop_remainder=True)
 
-    train_dataset = train_dataset.batch(
-        config.batch_size, drop_remainder=True)
+    # validation_dataset = validation_dataset.batch(
+    #     config.batch_size, drop_remainder=True)
 
-    validation_dataset = val_dataset.batch(
-        config.batch_size, drop_remainder=True)
-
-    config.batches = train_dataset.cardinality().numpy()
+    # config.batches = train_dataset.cardinality().numpy()
 
     print(f"Config {config.__dict__}")
 
 
-    model = tfdf.keras.RandomForestModel()
-    model.compile()
+    model = tfdf.keras.RandomForestModel(check_dataset=False)
+    model.compile(metrics=["accuracy"])
 
     callbacks = []
 
@@ -49,14 +48,15 @@ def main(config: Config):
         print(f"loading weights from {config.checkpoint_path}")
         model.load_weights(config.checkpoint_path)
 
-    print(train_dataset)
+    
     
     history = model.fit(train_dataset, 
-            epochs=config.epoch,
             validation_data=validation_dataset,
             verbose=config.verbose,
             callbacks=callbacks,
-            validation_freq=1)
+            #validation_freq=1
+            )
+
 
     print()
     print("History training")
@@ -64,10 +64,11 @@ def main(config: Config):
     
 
     if test_dataset is not None:
-        test_dataset = test_dataset.batch(
-            config.batch_size, drop_remainder=True)
+        # test_dataset = test_dataset.batch(
+        #     config.batch_size, drop_remainder=True)
         print()
         print(f"Test Set:")
+        model.compile(metrics=["accuracy"])
 
         history = model.evaluate(test_dataset, verbose=config.verbose, return_dict=True)
         print(history)
