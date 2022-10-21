@@ -9,9 +9,9 @@ class Discriminator(tf.keras.Sequential):
         units = (config.num_steps - 1) * config.input_dimension_size
         
         self.add(tf.keras.Input(shape=(units)))
-        self.add(tf.layers.Dense(units, activation='tanh'))
-        self.add(tf.layers.Dense(int(units)//2, activation='tanh'))
-        self.add(tf.layers.Dense(units, activation='sigmoid'))
+        self.add(tf.keras.layers.Dense(units, activation='tanh'))
+        self.add(tf.keras.layers.Dense(int(units)//2, activation='tanh'))
+        self.add(tf.keras.layers.Dense(units, activation='sigmoid'))
 
 class Classifier(tf.keras.Sequential):
     def __init__(self, config: Config, *args, **kwargs):
