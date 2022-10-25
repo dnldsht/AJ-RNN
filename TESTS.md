@@ -213,3 +213,30 @@ total_G_loss = 1e-3 * loss_imputation + G_loss + 1e-4 * regularization_loss
 
 # cell-type = LSTM
 ```
+
+# Test 11
+
+## 600 epochs
+
+history: `tests/11-600e.txt`
+
+- accuracy: 0.8079
+- val_accuracy: 0.8310
+- test_accuracy: 0.779
+
+Commit [2a8f36baeb26fcf6e4acd87e4d3de8c5d387008e](https://github.com/dnldsht/AJ-RNN/commit/2a8f36baeb26fcf6e4acd87e4d3de8c5d387008e)
+
+### relevant changes
+
+- batch_size: 256
+
+```python
+# Discrinator
+loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=M))
+
+# Generator
+self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
+loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
+G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
+total_G_loss = loss_imputation + G_loss + regularization_loss
+```
