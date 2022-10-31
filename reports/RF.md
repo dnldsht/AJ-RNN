@@ -1,6 +1,9 @@
 # Random Forests
+
 ## Dataset
+
 the dataset has been mapped with this function
+
 ```python
 def map_data(d):
   return {
@@ -9,7 +12,9 @@ def map_data(d):
         for b in range(d.shape[-1])
   }
 ```
+
 The new data look like this
+
 ```
 {'time(0)::band(0)': array([0.02333209, 0.02921154, 0.05180097, ..., 0.01856665, 0.01677188,
         0.01881421], dtype=float32),
@@ -19,6 +24,8 @@ The new data look like this
         0.02968184], dtype=float32),
 ....
 ```
+
+## Training
 
 Training random forest on 83699 example(s) and 864 feature(s).
 Final OOB metrics: accuracy:0.990538 logloss:0.0512743
@@ -32,9 +39,7 @@ Test Set:
 1/1 - 4s - loss: 0.0000e+00 - accuracy: 0.9171 - 4s/epoch - 4s/step
 {'loss': 0.0, 'accuracy': 0.9171094298362732}
 
-
 # Notes
+
 - The dataset han not been batched
 - check_dataset=False has been introduced
-
-
