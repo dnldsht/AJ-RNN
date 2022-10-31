@@ -136,13 +136,13 @@ def get_idx_of_object_ids(ids, lut):
     tot_idx = np.concatenate(tot_idx, axis=0)
     return tot_idx
 
-def get_split_idx(lut, train_perc=.6, val_perc=.2):
+def get_split_idx(lut, train_perc=.6, val_perc=.2, seed=23):
     train_idx, valid_idx, test_idx = [], [], []
     unique_ids_by_class = get_unique_ids_by_class(lut)
 
     for label in unique_ids_by_class:
         ids = unique_ids_by_class[label]
-        ids = shuffle(ids, random_state=23)
+        ids = shuffle(ids, random_state=seed)
         
         limit_train = int(len(ids)* train_perc )
         limit_val = limit_train + int(len(ids)* val_perc)
@@ -162,7 +162,7 @@ def generate_dataset(idx, data, prediction_target, mask, labels, num_classes):
     return tf.data.Dataset.from_tensor_slices((data_subset, prediction_target_subset, mask_subset, labels_subset ))
 
 
-def load_sits_rf():
+def load_sits_rf(seed=23):
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
     lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
@@ -197,7 +197,7 @@ def load_sits_rf():
     
 
     # train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
-    train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val)
+    train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val, seed=seed)
     #return (map_data(data[train_idx]), labels[train_idx]), None, None
     train_dataset = tf.data.Dataset.from_tensors((map_data(data[train_idx]), labels[train_idx]))
     val_dataset = tf.data.Dataset.from_tensors((map_data(data[val_idx]), labels[val_idx]))
@@ -208,7 +208,7 @@ def load_sits_rf():
 
     return train_dataset, val_dataset, test_dataset
 
-def load_sits(smaller_dataset=False):
+def load_sits(smaller_dataset=False, seed=23):
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
     lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
@@ -235,7 +235,7 @@ def load_sits(smaller_dataset=False):
         train, val = 0.15, 0.15
 
     # train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
-    train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val)
+    train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val, seed=seed)
     train_dataset = generate_dataset(train_idx, data, prediction_target, mask, labels, num_classes)
     val_dataset = generate_dataset(val_idx, data, prediction_target, mask, labels, num_classes)
     test_dataset = generate_dataset(test_idx, data, prediction_target, mask, labels, num_classes)
@@ -246,9 +246,9 @@ def load_sits(smaller_dataset=False):
 
     
 
-def load(train, test, smaller_dataset=False):
+def load(train, test, smaller_dataset=False, seed=23):
     if train == 'SITS':
-        return load_sits(smaller_dataset)
+        return load_sits(smaller_dataset, seed=seed)
     
     train_dataset, num_classes, num_steps, num_bands = load_dataset(train, True)
     v_dataset = load_dataset(test, False)

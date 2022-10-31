@@ -12,7 +12,7 @@ def main(config: Config):
 
     print(f"Training w/ {config.train_data_filename}")
     
-    train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename, config.smaller_dataset)
+    train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename, config.smaller_dataset, config.seed)
 
     config.num_steps = num_steps
     config.input_dimension_size = num_bands
@@ -90,6 +90,7 @@ if __name__ == "__main__":
     parser.add_argument('--lamda', type=float, required=False, default=1, help='coefficient that balances the prediction loss')
     parser.add_argument('--D_epoch', type=int, required=False, default=1, help='frequency of updating dicriminator in an adversarial training epoch')
     parser.add_argument('--GPU', type=str, required=False, default='0', help='GPU to use')
+    parser.add_argument('--seed', type=int, required=True, default=23, help='GPU to use')
 
     parser.add_argument('-path', '--checkpoint_path', type=str, required=False, default=None, help='Path of checkpoint model')
     parser.add_argument('-save', '--save_checkpoint', default=False, action='store_true', help='Save model in checkpoint_path')

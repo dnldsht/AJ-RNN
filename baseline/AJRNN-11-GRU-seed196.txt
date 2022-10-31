@@ -1,0 +1,6 @@
+Training w/ SITS
+MISSING RATIO: 0.339
+Config {'batch_size': 256, 'epoch': 300, 'lamda_D': 1.0, 'G_epoch': 5, 'train_data_filename': 'SITS', 'test_data_filename': None, 'layer_num': 1, 'hidden_size': 100, 'learning_rate': 0.001, 'cell_type': 'GRU', 'lamda': 1, 'D_epoch': 1, 'GPU': '0', 'seed': 196, 'checkpoint_path': None, 'save_checkpoint': False, 'load_checkpoint': False, 'smaller_dataset': False, 'verbose': 2, 'num_steps': 54, 'input_dimension_size': 16, 'class_num': 8, 'batches': 324}
+Epoch 1/300
+324/324 - 149s - accuracy: 0.4099 - c_loss: 1.9090 - d_loss: 0.4995 - g_loss: 0.2104 - imp_loss: 2.0181e-04 - reg_loss: 0.0072 - total_g_loss: 0.2177 - val_accuracy: 0.5914 - 149s/epoch - 461ms/step
+Epoch 2/300

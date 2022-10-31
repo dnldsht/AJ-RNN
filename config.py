@@ -22,3 +22,4 @@ class Config(object):
     load_checkpoint = False
     smaller_dataset = False
     verbose = 2
+    seed = 23

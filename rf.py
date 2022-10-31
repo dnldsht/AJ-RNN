@@ -13,7 +13,7 @@ def main(config: Config):
 
     print(f"Training w/ {config.train_data_filename}")
     
-    train_dataset, validation_dataset, test_dataset = utils.load_sits_rf()
+    train_dataset, validation_dataset, test_dataset = utils.load_sits_rf(config.seed)
 
     
     # train_dataset = train_dataset.batch(
@@ -54,7 +54,7 @@ def main(config: Config):
             validation_data=validation_dataset,
             verbose=config.verbose,
             callbacks=callbacks,
-            #validation_freq=1
+            validation_freq=1
             )
 
 
@@ -98,6 +98,7 @@ if __name__ == "__main__":
     parser.add_argument('-load', '--load_checkpoint', default=False, action='store_true', help='Load model from checkpoint')
     parser.add_argument('-small', '--smaller_dataset', default=False, action='store_true', help='Load smaller dataset')
     parser.add_argument('-v', '--verbose', nargs='?', type=int, const=1, default=2, help='Verbose mode')
+    parser.add_argument('--seed', type=int, required=True, default=23, help='GPU to use')
 
     config = parser.parse_args()
     main(config)
