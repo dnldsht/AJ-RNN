@@ -120,7 +120,7 @@ class AJRNN(tf.keras.Model):
         #       decay_rate=0.97,
         #       staircase=True)
 
-        self.g_optimizer = tf.keras.optimizers.Adam(1e-8)
+        self.g_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
 
