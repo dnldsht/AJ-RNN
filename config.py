@@ -17,9 +17,7 @@ class Config(object):
     batches = None
     train_data_filename = None
     test_data_filename = None
-    checkpoint_path = None
-    save_checkpoint = False
-    load_checkpoint = False
+    results_path = None
     smaller_dataset = False
     verbose = 2
     seed = 23

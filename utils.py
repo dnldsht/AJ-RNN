@@ -4,8 +4,25 @@ import copy
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
+import json
 
 MISSING_VALUE = 128.0
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
+def dump_json(path, data):
+    with open(path, 'w') as f:
+        f.write(json.dumps(data, cls=NpEncoder, indent=2))  
+
+
 
 
 def transfer_labels(labels):

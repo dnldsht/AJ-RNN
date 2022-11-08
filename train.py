@@ -3,6 +3,9 @@ from ajrnn import AJRNN, Config
 
 import utils
 import argparse
+import json
+import time
+import os
 
 
 tf.config.set_visible_devices([], 'GPU')
@@ -26,29 +29,23 @@ def main(config: Config):
 
     config.batches = train_dataset.cardinality().numpy()
 
-    print(f"Config {config.__dict__}")
+    if not os.path.exists(config.results_path):
+        os.makedirs(config.results_path)
 
+    
+    utils.dump_json(f"{config.results_path}/config.json", config.__dict__)
 
     model = AJRNN(config)
     model.compile()
 
-    callbacks = []
 
-    if config.save_checkpoint:
-        callbacks.append(
-            tf.keras.callbacks.ModelCheckpoint(
-                filepath=config.checkpoint_path,
-                save_weights_only=True,
-                monitor='val_accuracy',
-                mode='max',
-                verbose=1,
-                save_best_only=True)
-        )
-        print(f"will save weights in {config.checkpoint_path}")
+    model_file = f"{config.results_path}/model/weights"
 
-    if config.load_checkpoint:
-        print(f"loading weights from {config.checkpoint_path}")
-        model.load_weights(config.checkpoint_path)
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(model_file, save_weights_only=True, monitor='val_accuracy', mode='max', verbose=0, save_best_only=True)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0, patience=10, verbose=0, mode='auto')
+
+    callbacks = [checkpoint, early_stop]
+    start_train_time = time.time()
     
     history = model.fit(train_dataset, 
             epochs=config.epoch,
@@ -56,20 +53,34 @@ def main(config: Config):
             verbose=config.verbose,
             callbacks=callbacks,
             validation_freq=1)
+    h = history.history
 
-    print()
-    print("History training")
-    utils.print_history(history.history)
+    utils.dump_json(f"{config.results_path}/trainlog.json", h)
+
+    train_time = round(time.time()-start_train_time, 2)
     
 
     if test_dataset is not None:
+        print()
+        print(f"Test ")        
+        model.load_weights(model_file)
         test_dataset = test_dataset.batch(
             config.batch_size, drop_remainder=True)
-        print()
-        print(f"Test Set:")
+        
 
-        history = model.evaluate(test_dataset, verbose=config.verbose, return_dict=True)
-        print(history)
+        start_test_time = time.time()
+        test_accuracy = model.evaluate(test_dataset, verbose=config.verbose)
+        test_time = round(time.time()-start_test_time, 2)
+    
+    overview = {
+        'train_accuracy': h['accuracy'][-1],
+        'val_accuracy': max(h['val_accuracy']),
+        'test_accuracy': test_accuracy,
+        'best_val_epoch': h['val_accuracy'].index(max(h['val_accuracy'])) + 1,
+        'train_time': train_time,
+        'test_time': test_time
+    }
+    utils.dump_json(f"{config.results_path}/overview.json", overview)
 
 
 if __name__ == "__main__":
@@ -92,9 +103,7 @@ if __name__ == "__main__":
     parser.add_argument('--GPU', type=str, required=False, default='0', help='GPU to use')
     parser.add_argument('--seed', type=int, required=True, default=23, help='GPU to use')
 
-    parser.add_argument('-path', '--checkpoint_path', type=str, required=False, default=None, help='Path of checkpoint model')
-    parser.add_argument('-save', '--save_checkpoint', default=False, action='store_true', help='Save model in checkpoint_path')
-    parser.add_argument('-load', '--load_checkpoint', default=False, action='store_true', help='Load model from checkpoint')
+    parser.add_argument('-results', '--results_path', type=str, required=True, default=None, help='Path of results')
     parser.add_argument('-small', '--smaller_dataset', default=False, action='store_true', help='Load smaller dataset')
     parser.add_argument('-v', '--verbose', nargs='?', type=int, const=1, default=2, help='Verbose mode')
 
