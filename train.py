@@ -41,8 +41,8 @@ def main(config: Config):
 
     model_file = f"{config.results_path}/model/weights"
 
-    checkpoint = tf.keras.callbacks.ModelCheckpoint(model_file, save_weights_only=True, monitor='val_accuracy', mode='max', verbose=0, save_best_only=True)
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0, patience=10, verbose=0, mode='auto')
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(model_file, save_weights_only=True, monitor='val_accuracy', mode='max', verbose=1, save_best_only=True)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0, patience=50, verbose=1, mode='max')
 
     callbacks = [checkpoint, early_stop]
     start_train_time = time.time()
