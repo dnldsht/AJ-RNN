@@ -56,7 +56,7 @@ def main(config: Config):
             validation_freq=1)
     h = history.history
 
-    utils.dump_json(f"{config.results_path}/trainlog.json", h)
+    # utils.dump_json(f"{config.results_path}/trainlog.json", h)
 
     train_time = round(time.time()-start_train_time, 2)
     
