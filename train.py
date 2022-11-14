@@ -46,6 +46,7 @@ def main(config: Config):
     logger = tf.keras.callbacks.CSVLogger(f"{config.results_path}/trainlog.csv", separator=',', append=False)
 
     callbacks = [checkpoint, early_stop, logger]
+    
     start_train_time = time.time()
     
     history = model.fit(train_dataset, 

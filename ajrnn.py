@@ -121,6 +121,7 @@ class AJRNN(tf.keras.Model):
         #       staircase=True)
 
         self.g_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
+        self.g_optimizer_2 = tf.keras.optimizers.Adam(1e-7)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
 
@@ -168,7 +169,8 @@ class AJRNN(tf.keras.Model):
             batch_size = self.config.batch_size
 
 
-            with tf.GradientTape() as tape:
+            with tf.GradientTape() as tape, tf.GradientTape() as tape_c:
+                # reconstruction
                 prediction, last_cell = self.generator(inputs)
                 
                 # reshape prediction_target and corresponding mask  into [batch * (numsteps-1), hidden_size]
@@ -193,25 +195,41 @@ class AJRNN(tf.keras.Model):
                 G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
 
                 #loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
+                label_logits = self.classifier(last_cell)
+
+                # NOTE: softmax_cross_entropy_with_logits
+                # Measures the probability error in discrete classification tasks in which the classes are mutually exclusive (each entry is in exactly one class)
+                loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
 
                 total_G_loss = loss_imputation + G_loss + regularization_loss
 
             if training:
                 # update generator
-                grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
-                self.g_optimizer.apply_gradients(zip(grads, self.generator.trainable_variables))
+                g_grads = tape.gradient(total_G_loss, self.generator.trainable_variables)
+                self.g_optimizer.apply_gradients(zip(g_grads, self.generator.trainable_variables))
+                
+                # update classifier
+                classifier_trainable_variables = len(self.classifier.trainable_variables)
 
-        with tf.GradientTape() as tape:
-            label_logits = self.classifier(last_cell)
+                all_trainable_variables = [*self.classifier.trainable_variables, *self.generator.trainable_variables]
+                c_grads = tape_c.gradient(loss_classification, all_trainable_variables)
 
-            # NOTE: softmax_cross_entropy_with_logits
-            # Measures the probability error in discrete classification tasks in which the classes are mutually exclusive (each entry is in exactly one class)
-            loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
+                self.classifier_optimizer.apply_gradients(zip(c_grads[:classifier_trainable_variables], self.classifier.trainable_variables))
+                self.g_optimizer_2.apply_gradients(zip(c_grads[classifier_trainable_variables:], self.generator.trainable_variables))
 
-        if training:
-            # update classifier
-            grads = tape.gradient(loss_classification, self.classifier.trainable_variables)
-            self.classifier_optimizer.apply_gradients(zip(grads, self.classifier.trainable_variables))
+        # with tf.GradientTape(persistent=True) as tape:
+        #     label_logits = self.classifier(last_cell)
+
+        #     # NOTE: softmax_cross_entropy_with_logits
+        #     # Measures the probability error in discrete classification tasks in which the classes are mutually exclusive (each entry is in exactly one class)
+        #     loss_classification = loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
+
+        # if training:
+        #     # update classifier
+        #     #print(self.classifier.trainable_variables)
+        #     trainable_variables = self.classifier.trainable_variables#[*self.classifier.trainable_variables, *self.generator.trainable_variables]
+        #     grads = tape.gradient(loss_classification, trainable_variables)
+        #     self.classifier_optimizer.apply_gradients(zip(grads, trainable_variables))   
 
         self.regularization_loss.update_state(regularization_loss)
         self.imputation_loss.update_state(loss_imputation)   
