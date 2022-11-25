@@ -1,8 +1,0 @@
-{
-  "train_accuracy": 0.7802022695541382,
-  "val_accuracy": 0.7736907005310059,
-  "test_accuracy": 0.7313418984413147,
-  "best_val_epoch": 135,
-  "train_time": 36565.88,
-  "test_time": 4.65
-}
