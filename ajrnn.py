@@ -240,8 +240,9 @@ class AJRNN(tf.keras.Model):
         }
 
     def test_step(self, data):
-        inputs, prediction_target, mask, label_target = data
+        return self.train_step(data, training=False)
+        # inputs, prediction_target, mask, label_target = data
 
-        self.generator_step(inputs, prediction_target, mask, label_target, training=False)
+        # self.generator_step(inputs, prediction_target, mask, label_target, training=False)
 
-        return {"accuracy": self.accuracy.result()}
+        # return {"accuracy": self.accuracy.result()}
