@@ -10,6 +10,19 @@ import os
 
 tf.config.set_visible_devices([], 'GPU')
 
+class TestCallback(tf.keras.callbacks.Callback):
+    def __init__(self, test_dataset):
+        super().__init__()
+        self.test_dataset = test_dataset
+        self.test_acc_metric = tf.keras.metrics.SparseCategoricalAccuracy()
+        self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True) 
+
+    def on_epoch_end(self, epoch, logs=None):
+
+        res = self.model.evaluate(self.test_dataset, verbose=config.verbose, return_dict=True)
+        for k,v in res.items():
+            logs['test_'+k] = v
+
 
 def main(config: Config):
 
@@ -26,6 +39,9 @@ def main(config: Config):
 
     validation_dataset = val_dataset.batch(
         config.batch_size, drop_remainder=True)
+
+    test_dataset = test_dataset.batch(
+            config.batch_size, drop_remainder=True)
 
     config.batches = train_dataset.cardinality().numpy()
 
@@ -45,7 +61,9 @@ def main(config: Config):
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0, patience=100, verbose=1, mode='max')
     logger = tf.keras.callbacks.CSVLogger(f"{config.results_path}/trainlog.csv", separator=',', append=False)
 
-    callbacks = [checkpoint, early_stop, logger]
+    test_callback = TestCallback(test_dataset)
+
+    callbacks = [test_callback, checkpoint, early_stop, logger]
     
     start_train_time = time.time()
     
