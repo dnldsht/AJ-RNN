@@ -62,8 +62,8 @@ def main(config: Config):
     logger = tf.keras.callbacks.CSVLogger(f"{config.results_path}/trainlog.csv", separator=',', append=False)
 
     test_callback = TestCallback(test_dataset)
-
-    callbacks = [test_callback, checkpoint, early_stop, logger]
+    # checkpoint, early_stop,
+    callbacks = [test_callback, logger]
     
     start_train_time = time.time()
     
@@ -80,25 +80,25 @@ def main(config: Config):
     train_time = round(time.time()-start_train_time, 2)
     
 
-    if test_dataset is not None:
-        print()
-        print(f"Test ")        
-        model.load_weights(model_file)
-        test_dataset = test_dataset.batch(
-            config.batch_size, drop_remainder=True)
+    # if test_dataset is not None:
+    #     print()
+    #     print(f"Test ")        
+    #     model.load_weights(model_file)
+    #     test_dataset = test_dataset.batch(
+    #         config.batch_size, drop_remainder=True)
         
 
-        start_test_time = time.time()
-        test_accuracy = model.evaluate(test_dataset, verbose=config.verbose)
-        test_time = round(time.time()-start_test_time, 2)
+    #     start_test_time = time.time()
+    #     test_accuracy = model.evaluate(test_dataset, verbose=config.verbose)
+    #     test_time = round(time.time()-start_test_time, 2)
     
     overview = {
         'train_accuracy': h['accuracy'][-1],
         'val_accuracy': max(h['val_accuracy']),
-        'test_accuracy': test_accuracy,
+        #'test_accuracy': test_accuracy,
         'best_val_epoch': h['val_accuracy'].index(max(h['val_accuracy'])) + 1,
         'train_time': train_time,
-        'test_time': test_time
+        #'test_time': test_time
     }
     utils.dump_json(f"{config.results_path}/overview.json", overview)
 
