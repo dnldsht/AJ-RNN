@@ -19,7 +19,7 @@ class TestCallback(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
 
-        res = self.model.evaluate(self.test_dataset, verbose=config.verbose, return_dict=True)
+        res = self.model.evaluate(self.test_dataset, verbose=0, return_dict=True)
         for k,v in res.items():
             logs['test_'+k] = v
 
@@ -122,10 +122,12 @@ if __name__ == "__main__":
     parser.add_argument('--D_epoch', type=int, required=False, default=1, help='frequency of updating dicriminator in an adversarial training epoch')
     parser.add_argument('--dropout', type=float, default=0, help="Dropout for rnn cell")
     parser.add_argument('--GPU', type=str, required=False, default='0', help='GPU to use')
+    parser.add_argument('--reg_classifier', default=False, action='store_true', help='Add classifier weights to regularization loss')
     parser.add_argument('--seed', type=int, required=True, default=23, help='GPU to use')
 
     parser.add_argument('-results', '--results_path', type=str, required=True, default=None, help='Path of results')
     parser.add_argument('-small', '--smaller_dataset', default=False, action='store_true', help='Load smaller dataset')
+    
     parser.add_argument('-v', '--verbose', nargs='?', type=int, const=1, default=2, help='Verbose mode')
 
     config = parser.parse_args()

@@ -177,7 +177,14 @@ class AJRNN(tf.keras.Model):
                 masks = tf.reshape(mask, [-1, dim_size])
 
                 loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
-                regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in self.generator.trainable_weights)
+
+                # regularization
+                reg_variables = []
+                reg_variables.extend(self.generator.trainable_variables)
+                if self.config.reg_classifier:
+                    reg_variables.extend(self.classifier.trainable_variables)
+
+                regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in reg_variables)
 
             
                 prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])

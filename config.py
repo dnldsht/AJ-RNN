@@ -22,3 +22,4 @@ class Config(object):
     smaller_dataset = False
     verbose = 2
     seed = 23
+    reg_classifier = False
