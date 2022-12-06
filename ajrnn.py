@@ -21,11 +21,11 @@ class Classifier(tf.keras.Sequential):
         self.add(tf.keras.Input(config.hidden_size))
         self.add(tf.keras.layers.Dense(units))
 
-def RNNCell(type, hidden_size):
+def RNNCell(type, hidden_size, dropout=0):
     if type == 'LSTM':
-        cell = tf.keras.layers.LSTMCell(hidden_size)
+        cell = tf.keras.layers.LSTMCell(hidden_size, dropout=dropout)
     elif type == 'GRU':
-        cell = tf.keras.layers.GRUCell(hidden_size)
+        cell = tf.keras.layers.GRUCell(hidden_size, dropout=dropout)
     return cell
 
 class Generator(tf.keras.layers.Layer):
@@ -40,7 +40,7 @@ class Generator(tf.keras.layers.Layer):
         self.cell_type = config.cell_type  # RNN Cell type
         self.layer_num = config.layer_num  
 
-        cells = [RNNCell(type=self.cell_type, hidden_size=self.hidden_size) for _ in range(self.layer_num)]
+        cells = [RNNCell(type=self.cell_type, hidden_size=self.hidden_size, dropout=config.dropout) for _ in range(self.layer_num)]
         self.mulrnn_cell = tf.keras.layers.StackedRNNCells(cells)
 
     def build(self, input_shape):

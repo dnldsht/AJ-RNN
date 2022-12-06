@@ -6,6 +6,7 @@ class Config(object):
     hidden_size = 100
     learning_rate = 1e-3
     cell_type = 'GRU'
+    dropout = 0
     lamda = 1 # coefficient that balances the prediction loss
     D_epoch = 1
     GPU = '0'

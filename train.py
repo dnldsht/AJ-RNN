@@ -120,6 +120,7 @@ if __name__ == "__main__":
     parser.add_argument('--cell_type', type=str, required=False, default='GRU', help='should be "GRU" or "LSTM" ')
     parser.add_argument('--lamda', type=float, required=False, default=1, help='coefficient that balances the prediction loss')
     parser.add_argument('--D_epoch', type=int, required=False, default=1, help='frequency of updating dicriminator in an adversarial training epoch')
+    parser.add_argument('--dropout', type=float, default=0, help="Dropout for rnn cell")
     parser.add_argument('--GPU', type=str, required=False, default='0', help='GPU to use')
     parser.add_argument('--seed', type=int, required=True, default=23, help='GPU to use')
 
