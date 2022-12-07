@@ -57,7 +57,7 @@ self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable
   - seed 196
 
 - GRU128-G5-LR6-BS32
-  - seed 89 (TODO)
+  - seed 89 (ongoing sophia)
   - seed 27836 (TODO)
   - seed 196
 
@@ -67,13 +67,38 @@ self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable
   - seed 196 (TODO)
 
 - GRU128-G1-LR6-BS32
-  - seed 89 (ongoing sophia)
+  - seed 89 (planned sophia)
   - seed 27836
   - seed 196 (TODO)
 
 - GRU128-G1-LR3-BS256
-  - seed 89 (TODO)
+  - seed 89 (planned sophia)
   - seed 27836 (TODO)
-  - seed 196 (ongoing imac)
+  - seed 196
+
+- GRU128-G1-LR3-BS32
+  - seed 89 (planned sophia)
+  - seed 27836 (TODO)
+  - seed 196 (TODO)
+
+- GRU128-G1-LR3-BS256-REG-DROP
+  - seed 89
+  - seed 27836 (TODO)
+  - seed 196 (TODO)
+
+- GRU128-G1-LR3-BS32-REG-DROP
+  - seed 89 (planned imac)
+  - seed 27836 (skip)
+  - seed 196 (TODO)
+
+- GRU128-G1-LR3-BS256-REG
+  - seed 89 (planned imac)
+  - seed 27836 (TODO)
+  - seed 196 (TODO)
+
+- GRU128-G1-LR3-BS32-REG
+  - seed 89 (planned imac)
+  - seed 27836 (skip)
+  - seed 196 (TODO)
 
 
