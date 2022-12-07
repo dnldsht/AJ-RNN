@@ -92,12 +92,12 @@ self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable
   - seed 196 (TODO)
 
 - GRU128-G1-LR3-BS256-REG
-  - seed 89 (planned imac)
+  - seed 89
   - seed 27836 (TODO)
   - seed 196 (TODO)
 
 - GRU128-G1-LR3-BS32-REG
-  - seed 89 (planned imac)
+  - seed 89 (ongoing imac)
   - seed 27836 (skip)
   - seed 196 (TODO)
 
