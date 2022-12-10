@@ -65,7 +65,7 @@ self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable
 
 - GRU128-G1-LR6-BS256
   - seed 89     maxVal(e:598 [85.5, v:83.7, t:84.9]) maxTrain(e:599 [85.5, v:83.7, t:84.9])
-  - seed 27836  maxVal(e:31 [76.3, v:74.9, t:65.6]) maxTrain(e:31 [76.3, v:74.9, t:65.6]) (ongoing sophia)
+  - seed 27836  maxVal(e:598 [85.5, v:81.9, t:76.2]) maxTrain(e:599 [85.5, v:81.9, t:76.2])
   - seed 196 (TODO)
 
 - GRU128-G1-LR3-BS256
@@ -86,7 +86,7 @@ self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable
 ### Batch size 32
 
 - GRU128-G5-LR6-BS32
-  - seed 89     maxVal(e:23 [95.1, v:19.1, t:28.8]) maxTrain(e:141 [98.8, v:17.3, t:24.8]) (ongoing sophia)
+  - seed 89     maxVal(e:23 [95.1, v:19.1, t:28.8]) maxTrain(e:238 [99.3, v:17.2, t:24.8]) (ongoing sophia)
   - seed 27836 (TODO)
   - seed 196    maxVal(e:6 [90.7, v:27.8, t:29.6]) maxTrain(e:599 [99.4, v:16.4, t:16.9])
 
