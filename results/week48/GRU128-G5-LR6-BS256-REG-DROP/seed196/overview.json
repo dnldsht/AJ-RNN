@@ -1,0 +1,6 @@
+{
+  "train_accuracy": 0.8968942761421204,
+  "val_accuracy": 0.7811104655265808,
+  "best_val_epoch": 256,
+  "train_time": 107512.4
+}
