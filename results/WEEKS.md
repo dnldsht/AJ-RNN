@@ -86,7 +86,7 @@ self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable
 ### Batch size 32
 
 - GRU128-G5-LR6-BS32
-  - seed 89     maxVal(e:23 [95.1, v:19.1, t:28.8]) maxTrain(e:537 [99.5, v:18.0, t:26.9]) (ongoing sophia)
+  - seed 89     maxVal(e:23 [95.1, v:19.1, t:28.8]) maxTrain(e:537 [99.5, v:18.0, t:26.9])
   - seed 27836 (TODO)
   - seed 196    maxVal(e:6 [90.7, v:27.8, t:29.6]) maxTrain(e:599 [99.4, v:16.4, t:16.9])
 
@@ -101,7 +101,7 @@ self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable
   - seed 196 (planned imac)
 
 - GRU128-G1-LR6-BS32 (best)
-  - seed 89 (planned sophia)
+  - seed 89 maxVal(e:11 [82.7, v:61.9, t:68.6]) maxTrain(e:11 [82.7, v:61.9, t:68.6]) (ongoing sophia)
   - seed 27836  maxVal(e:44 [88.2, v:67.4, t:57.7]) maxTrain(e:599 [92.2, v:33.9, t:23.4])
   - seed 196 (planned imac)
 
