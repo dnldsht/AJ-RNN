@@ -1,28 +1,52 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import copy
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
+import json
+
+MISSING_VALUE = 128.0
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
+def dump_json(path, data):
+    with open(path, 'w') as f:
+        f.write(json.dumps(data, cls=NpEncoder, indent=2))  
+
+
 
 
 def transfer_labels(labels):
-	#some labels are [1,2,4,11,13] and is transfer to standard label format [0,1,2,3,4]
-	indexes = np.unique(labels)
-	num_classes = indexes.shape[0]
-	num_samples = labels.shape[0]
+    # some labels are [1,2,4,11,13] and is transfer to standard label format [0,1,2,3,4]
+    indexes = np.unique(labels)
+    num_classes = indexes.shape[0]
+    num_samples = labels.shape[0]
 
-	for i in range(num_samples):
-		new_label = np.argwhere( labels[i] == indexes )[0][0]
-		labels[i] = new_label
-	return labels, num_classes
+    for i in range(num_samples):
+        new_label = np.argwhere(labels[i] == indexes)[0][0]
+        labels[i] = new_label
+    return labels, num_classes
+
 
 def load_data(filename):
-	data_label = np.loadtxt(filename,delimiter=',')
-	data = data_label[:,1:]
-	label = data_label[:,0].astype(np.int32)
-	return data, label
+    data_label = np.loadtxt(filename, delimiter=',')
+    data = data_label[:, 1:].astype(np.float32)
+    label = data_label[:, 0].astype(np.int32)
+    return data, label
 
-def convertToOneHot(vector, num_classes=None):
-	#convert label to one_hot format
-    vector = np.array(vector,dtype = int)
+
+def convert_to_one_hot(vector, num_classes=None):
+    # convert label to one_hot format
+    vector = np.array(vector, dtype=int)
     if 0 not in np.unique(vector):
         vector = vector - 1
     assert isinstance(vector, np.ndarray)
@@ -36,47 +60,214 @@ def convertToOneHot(vector, num_classes=None):
     result[np.arange(len(vector)), vector] = 1
     return result.astype(np.int32)
 
-def next_batch(batch_size, data, label, end_to_end,input_dimension_size,num_step, Trainable):
-	if end_to_end:
-		data [ np.where(np.isnan(data))] = 128
-	need_label = copy.deepcopy(label)
-	label = convertToOneHot(label, num_classes = len(np.unique(label)))
-	assert data.shape[0] == label.shape[0]
-	assert data.shape[0] >= batch_size
-	row = data.shape[0]
-	batch_len = int( row / batch_size )
-	left_row = row - batch_len * batch_size
 
-	#shuffle data for train
-	if Trainable:
-		indices = np.random.permutation(data.shape[0])
-		rand_data = data[indices]
-		rand_label = label[indices]
-		need_rand_label = need_label[indices]
-	else:
-		rand_data = data
-		rand_label = label
-		need_rand_label = need_label
 
-	for i in range(batch_len):
-		batch_input = rand_data[ i*batch_size : (i+1)*batch_size, :]
-		batch_prediction_target = rand_data[ i*batch_size : (i+1)*batch_size, input_dimension_size:]
-		mask = np.ones_like(batch_prediction_target)
-		mask [ np.where( batch_prediction_target == 128 ) ] = 0
-		batch_label = rand_label[ i*batch_size : (i+1)*batch_size, : ]
-		batch_need_label = need_rand_label[i*batch_size : (i+1)*batch_size]
-		yield (batch_input.reshape(-1, num_step, input_dimension_size), batch_prediction_target.reshape(-1, num_step - 1, input_dimension_size), mask.reshape(-1, num_step - 1, input_dimension_size), batch_label, batch_size, batch_need_label)
+def load_dataset(filename, extra=False):
+    data, labels = load_data(filename)
+    data[np.where(np.isnan(data))] = MISSING_VALUE
+    num_steps = data.shape[1]
 
-	# padding data for equal batch_size
-	if left_row != 0:
-		need_more = batch_size - left_row
-		need_more = np.random.choice( np.arange(row), size = need_more )
-		batch_input = np.concatenate((rand_data[ -left_row: , : ], rand_data[need_more]), axis=0)
-		batch_prediction_target = np.concatenate((rand_data[ -left_row: , : ], rand_data[need_more]), axis=0)[:, input_dimension_size:]
-		assert batch_input.shape[0] == batch_prediction_target.shape[0]
-		assert batch_input.shape[1] - input_dimension_size == batch_prediction_target.shape[1]
-		mask = np.ones_like(batch_prediction_target)
-		mask [ np.where( batch_prediction_target == 128 ) ] = 0
-		batch_label = np.concatenate( (rand_label[ -left_row: , : ], rand_label[ need_more ]),axis=0)
-		batch_need_label =  np.concatenate( (need_rand_label[-left_row:], need_rand_label[ need_more ]), axis=0)
-		yield (batch_input.reshape(-1, num_step, input_dimension_size), batch_prediction_target.reshape(-1, num_step - 1, input_dimension_size), mask.reshape(-1, num_step - 1, input_dimension_size), batch_label, left_row, batch_need_label)
+    labels, num_classes = transfer_labels(labels)
+    labels = convert_to_one_hot(labels, num_classes=len(np.unique(labels)))
+    prediction_target = data[:, 1:]
+    mask = np.ones_like(prediction_target)
+    mask[np.where(prediction_target == MISSING_VALUE)] = 0
+    check_missing_ratio(mask)
+
+    data = data.reshape(-1, num_steps, 1)
+    prediction_target = prediction_target.reshape(-1, num_steps - 1, 1)
+    mask = mask.reshape(-1, num_steps - 1, 1)
+
+    dataset = tf.data.Dataset.from_tensor_slices(
+        (data, prediction_target, mask, labels))
+
+    if extra:
+        return dataset, num_classes, num_steps, 1
+    return dataset
+
+
+def check_missing_ratio(masks):
+    total = np.prod(masks.shape)
+    ones = np.count_nonzero(masks)
+    missing_ratio = 1 - ones/total
+    print(f"MISSING RATIO: {missing_ratio:.3f}")
+
+def print_history(h):
+  for key, value in h.items():
+    values = list(map(lambda x: round(x, 4), value))
+    print(f"'{key}': {values},")
+
+
+def get_dataset_partitions_tf(ds, train_split=0.8, val_split=0.1, test_split=0.1, shuffle=True, shuffle_size=10000):
+    assert (train_split + test_split + val_split) == 1
+
+    ds_size = 137606
+
+    if shuffle:
+        # Specify seed to always have the same split distribution between runs
+        ds = ds.shuffle(shuffle_size, reshuffle_each_iteration=False)
+
+    train_size = int(train_split * ds_size)
+    val_size = int(val_split * ds_size)
+
+    train_ds = ds.take(train_size)
+    val_ds = ds.skip(train_size).take(val_size)
+    test_ds = ds.skip(train_size).skip(val_size)
+
+    return train_ds, val_ds, test_ds
+
+def split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2):
+    if train_size + val_size + test_size != 1:
+        raise ValueError('train_size + val_size + test_size != 1')
+    
+    split = train_test_split(data, prediction_target, mask, labels, test_size=val_size+test_size, stratify=labels)
+    train_data, rest_data, train_target, rest_target, train_mask, rest_mask, train_labels, rest_labels = split
+
+    split2 = train_test_split(rest_data, rest_target, rest_mask, rest_labels, test_size=(test_size+train_size/2), stratify=rest_labels)
+    val_data, test_data, val_target, test_target, val_mask, test_mask, val_labels, test_labels = split2
+
+    train_labels, val_labels, test_labels = convert_to_one_hot(train_labels, num_classes), convert_to_one_hot(val_labels, num_classes), convert_to_one_hot(test_labels, num_classes)
+    
+
+    train_dataset = tf.data.Dataset.from_tensor_slices((train_data, train_target, train_mask, train_labels))
+    val_dataset = tf.data.Dataset.from_tensor_slices((val_data, val_target, val_mask, val_labels))
+    test_dataset = tf.data.Dataset.from_tensor_slices((test_data, test_target, test_mask, test_labels))
+
+    return train_dataset, val_dataset, test_dataset
+
+def get_unique_ids_by_class(lut):
+    labels = lut[:, 1]
+    unique_labels = np.unique(labels)
+    ids_by_class = {}
+    for label in unique_labels:
+      idx = np.where(labels == label)
+      lut_subset = lut[idx]
+      ids_by_class[label] = np.unique(lut_subset[:, 0])
+    return ids_by_class
+
+def get_idx_of_object_ids(ids, lut):
+    lut_ids = lut[:, 0]
+    tot_idx = []
+    for i in ids:
+        tot_idx.append(np.where(lut_ids == i)[0])
+    tot_idx = np.concatenate(tot_idx, axis=0)
+    return tot_idx
+
+def get_split_idx(lut, train_perc=.6, val_perc=.2, seed=23):
+    train_idx, valid_idx, test_idx = [], [], []
+    unique_ids_by_class = get_unique_ids_by_class(lut)
+
+    for label in unique_ids_by_class:
+        ids = unique_ids_by_class[label]
+        ids = shuffle(ids, random_state=seed)
+        
+        limit_train = int(len(ids)* train_perc )
+        limit_val = limit_train + int(len(ids)* val_perc)
+        
+        
+        train_idx.extend(get_idx_of_object_ids(ids[0:limit_train], lut))
+        valid_idx.extend(get_idx_of_object_ids(ids[limit_train:limit_val], lut))
+        test_idx.extend(get_idx_of_object_ids(ids[limit_val:], lut))
+
+    return (train_idx,), (valid_idx,), (test_idx,)
+
+def generate_dataset(idx, data, prediction_target, mask, labels, num_classes):
+    data_subset = data[idx]
+    mask_subset = mask[idx]
+    labels_subset = convert_to_one_hot(labels[idx], num_classes)
+    prediction_target_subset = prediction_target[idx]
+    return tf.data.Dataset.from_tensor_slices((data_subset, prediction_target_subset, mask_subset, labels_subset ))
+
+
+def load_sits_rf(seed=23):
+    data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
+    masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
+    lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
+    
+    data[np.where(masks == 1)] = MISSING_VALUE
+
+    num_steps = data.shape[1]
+    num_bands = data.shape[2]
+    labels, num_classes = transfer_labels(lut[:, 1])
+    # labels = convert_to_one_hot(labels, num_classes=len(np.unique(labels)))
+    prediction_target = data[:, 1:]
+    mask = np.ones_like(prediction_target)
+    mask[np.where(prediction_target == MISSING_VALUE)] = 0
+
+    check_missing_ratio(np.array(mask))
+
+    data = data.reshape(-1, num_steps, num_bands)
+
+    #data = {f"time{i}":data[:,i] for i in range(data.shape[-2])}
+    def map_data(d):
+        return {
+            f"time({t})::band({b})": d[:,t,b]
+                for t in range(d.shape[-2])
+                    for b in range(d.shape[-1])
+        }
+    
+    prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
+    mask = mask.reshape(-1, num_steps - 1, num_bands)
+
+
+    train, val = 0.6, 0.2
+    
+
+    # train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
+    train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val, seed=seed)
+    #return (map_data(data[train_idx]), labels[train_idx]), None, None
+    train_dataset = tf.data.Dataset.from_tensors((map_data(data[train_idx]), labels[train_idx]))
+    val_dataset = tf.data.Dataset.from_tensors((map_data(data[val_idx]), labels[val_idx]))
+    test_dataset = tf.data.Dataset.from_tensors((map_data(data[test_idx]), labels[test_idx]))
+    
+    
+
+
+    return train_dataset, val_dataset, test_dataset
+
+def load_sits(smaller_dataset=False, seed=23):
+    data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
+    masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
+    lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
+    
+    data[np.where(masks == 1)] = MISSING_VALUE
+
+    num_steps = data.shape[1]
+    num_bands = data.shape[2]
+    labels, num_classes = transfer_labels(lut[:, 1])
+    # labels = convert_to_one_hot(labels, num_classes=len(np.unique(labels)))
+    prediction_target = data[:, 1:]
+    mask = np.ones_like(prediction_target)
+    mask[np.where(prediction_target == MISSING_VALUE)] = 0
+
+    check_missing_ratio(np.array(mask))
+
+    data = data.reshape(-1, num_steps, num_bands)
+    prediction_target = prediction_target.reshape(-1, num_steps - 1, num_bands)
+    mask = mask.reshape(-1, num_steps - 1, num_bands)
+
+
+    train, val = 0.6, 0.2
+    if smaller_dataset:
+        train, val = 0.15, 0.15
+
+    # train_dataset, val_dataset, test_dataset = split_sits(data, prediction_target, mask, labels, num_classes, train_size=0.6, val_size=0.2, test_size=0.2)
+    train_idx, val_idx, test_idx = get_split_idx(lut, train_perc=train, val_perc=val, seed=seed)
+    train_dataset = generate_dataset(train_idx, data, prediction_target, mask, labels, num_classes)
+    val_dataset = generate_dataset(val_idx, data, prediction_target, mask, labels, num_classes)
+    test_dataset = generate_dataset(test_idx, data, prediction_target, mask, labels, num_classes)
+
+
+    return train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands
+
+
+    
+
+def load(train, test, smaller_dataset=False, seed=23):
+    if train == 'SITS':
+        return load_sits(smaller_dataset, seed=seed)
+    
+    train_dataset, num_classes, num_steps, num_bands = load_dataset(train, True)
+    v_dataset = load_dataset(test, False)
+    return train_dataset, v_dataset, None, num_classes, num_steps, num_bands
+    

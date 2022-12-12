@@ -25,6 +25,11 @@ python ajrnn.py --dataset_name xxx --missing_ratio xxx
 python ajrnn.py --dataset_name Computers --missing_ratio 20
 ```
 
+## SITS dataset
+```
+pip install gdown
+gdown --folder https://drive.google.com/drive/folders/1tTbRA_DAF32s-eNKTOnjHhXQYCzit1pS
+```
 
 ## Citation
 

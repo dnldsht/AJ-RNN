@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
+.DS_Store
+
 # Distribution / packaging
 .Python
 build/
@@ -138,3 +140,5 @@ dmypy.json
 cython_debug/
 logs/*
 models/*
+SITS-Missing-Data/*
+sits/*
