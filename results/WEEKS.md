@@ -101,7 +101,7 @@ self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable
   - seed 196 (planned imac)
 
 - GRU128-G1-LR6-BS32 (best)
-  - seed 89 maxVal(e:11 [82.7, v:61.9, t:68.6]) maxTrain(e:11 [82.7, v:61.9, t:68.6]) (ongoing sophia)
+  - seed 89 maxVal(e:22 [84.2, v:63.6, t:70.7]) maxTrain(e:414 [91.8, v:45.5, t:54.7]) (ongoing sophia)
   - seed 27836  maxVal(e:44 [88.2, v:67.4, t:57.7]) maxTrain(e:599 [92.2, v:33.9, t:23.4])
   - seed 196 (planned imac)
 
