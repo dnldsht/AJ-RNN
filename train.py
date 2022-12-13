@@ -61,9 +61,14 @@ def main(config: Config):
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0, patience=100, verbose=1, mode='max')
     logger = tf.keras.callbacks.CSVLogger(f"{config.results_path}/trainlog.csv", separator=',', append=False)
 
-    test_callback = TestCallback(test_dataset)
+    #test_callback = TestCallback(test_dataset)
     # checkpoint, early_stop,
-    callbacks = [test_callback, logger]
+    callbacks = [
+        # test_callback,
+        checkpoint,
+        early_stop,
+        logger
+    ]
     
     start_train_time = time.time()
     
@@ -75,30 +80,28 @@ def main(config: Config):
             validation_freq=1)
     h = history.history
 
-    # utils.dump_json(f"{config.results_path}/trainlog.json", h)
-
     train_time = round(time.time()-start_train_time, 2)
     
 
-    # if test_dataset is not None:
-    #     print()
-    #     print(f"Test ")        
-    #     model.load_weights(model_file)
-    #     test_dataset = test_dataset.batch(
-    #         config.batch_size, drop_remainder=True)
+    if test_dataset is not None:
+        print()
+        print(f"Test ")        
+        model.load_weights(model_file)
+        test_dataset = test_dataset.batch(
+            config.batch_size, drop_remainder=True)
         
 
-    #     start_test_time = time.time()
-    #     test_accuracy = model.evaluate(test_dataset, verbose=config.verbose)
-    #     test_time = round(time.time()-start_test_time, 2)
+        start_test_time = time.time()
+        test_accuracy = model.evaluate(test_dataset, verbose=config.verbose)
+        test_time = round(time.time()-start_test_time, 2)
     
     overview = {
         'train_accuracy': h['accuracy'][-1],
         'val_accuracy': max(h['val_accuracy']),
-        #'test_accuracy': test_accuracy,
+        'test_accuracy': test_accuracy,
         'best_val_epoch': h['val_accuracy'].index(max(h['val_accuracy'])) + 1,
         'train_time': train_time,
-        #'test_time': test_time
+        'test_time': test_time
     }
     utils.dump_json(f"{config.results_path}/overview.json", overview)
 
@@ -122,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument('--D_epoch', type=int, required=False, default=1, help='frequency of updating dicriminator in an adversarial training epoch')
     parser.add_argument('--dropout', type=float, default=0, help="Dropout for rnn cell")
     parser.add_argument('--GPU', type=str, required=False, default='0', help='GPU to use')
-    parser.add_argument('--reg_classifier', default=False, action='store_true', help='Add classifier weights to regularization loss')
+    parser.add_argument('--reg_loss', default=False, action='store_true', help='Add regularization loss')
     parser.add_argument('--seed', type=int, required=True, default=23, help='GPU to use')
 
     parser.add_argument('-results', '--results_path', type=str, required=True, default=None, help='Path of results')

@@ -180,8 +180,8 @@ class AJRNN(tf.keras.Model):
 
                 # regularization
                 reg_variables = []
-                reg_variables.extend(self.generator.trainable_variables)
-                if self.config.reg_classifier:
+                if self.config.reg_loss:
+                    reg_variables.extend(self.generator.trainable_variables)
                     reg_variables.extend(self.classifier.trainable_variables)
 
                 regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in reg_variables)
