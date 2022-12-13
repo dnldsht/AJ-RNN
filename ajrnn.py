@@ -114,12 +114,6 @@ class AJRNN(tf.keras.Model):
     def compile(self):
         super(AJRNN, self).compile()
 
-        # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        #       initial_learning_rate=1e-5,
-        #       decay_steps=config.batches * config.G_epoch,
-        #       decay_rate=0.97,
-        #       staircase=True)
-
         self.g_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
         self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
         self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
@@ -248,8 +242,3 @@ class AJRNN(tf.keras.Model):
 
     def test_step(self, data):
         return self.train_step(data, training=False)
-        # inputs, prediction_target, mask, label_target = data
-
-        # self.generator_step(inputs, prediction_target, mask, label_target, training=False)
-
-        # return {"accuracy": self.accuracy.result()}
