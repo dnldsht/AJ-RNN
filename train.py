@@ -87,10 +87,7 @@ def main(config: Config):
         print()
         print(f"Test ")        
         model.load_weights(model_file)
-        test_dataset = test_dataset.batch(
-            config.batch_size, drop_remainder=True)
         
-
         start_test_time = time.time()
         test_accuracy = model.evaluate(test_dataset, verbose=config.verbose)
         test_time = round(time.time()-start_test_time, 2)
