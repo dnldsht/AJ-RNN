@@ -14,3 +14,7 @@
 - GRU128-G1-LR8-BS32 (best)
   - seed 89
   - seed 196
+
+
+# light AJRNN
+## BS256

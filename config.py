@@ -23,3 +23,4 @@ class Config(object):
     verbose = 2
     seed = 23
     reg_loss = False
+    light_ajrnn = False
