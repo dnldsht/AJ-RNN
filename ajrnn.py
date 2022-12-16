@@ -28,6 +28,12 @@ def RNNCell(type, hidden_size, dropout=0):
         cell = tf.keras.layers.GRUCell(hidden_size, dropout=dropout)
     return cell
 
+class GRULayer(tf.keras.Sequential):
+    def __init__(self, config: Config, *args, **kwargs):
+        super().__init__(name='GRULayer', *args, **kwargs, )
+        self.add(tf.keras.Input((config.num_steps, config.input_dimension_size)))
+        self.add(tf.keras.layers.GRU(config.hidden_size, dropout=config.dropout))
+
 class Generator(tf.keras.layers.Layer):
 
     def __init__(self, config: Config, *args, **kwargs):
@@ -236,6 +242,121 @@ class AJRNN(tf.keras.Model):
             "d_loss": self.discriminator_loss.result(),
             "g_loss": self.generator_loss.result(),
             "imp_loss": self.imputation_loss.result(),
+            "reg_loss": self.regularization_loss.result(),
+            "total_g_loss": self.total_generator_loss.result()
+        }
+
+    def test_step(self, data):
+        return self.train_step(data, training=False)
+
+
+class LighAJRNN(tf.keras.Model):
+
+    def __init__(self, config: Config, *args, **kwargs):
+        super().__init__(name='LighAJRNN', *args, **kwargs, )
+        self.config = config
+        self.rnn = Generator(config)
+        self.classifier = Classifier(config)
+   
+        self.built = True
+
+    def compile(self):
+        super(LighAJRNN, self).compile()
+
+        self.g_optimizer = tf.keras.optimizers.Adam(self.config.learning_rate)
+        self.d_optimizer = tf.keras.optimizers.Adam(1e-3)
+        self.classifier_optimizer = tf.keras.optimizers.Adam(1e-3)
+
+        self.classifier_loss = tf.keras.metrics.Mean(name="classifier_loss")
+        #self.generator_loss = tf.keras.metrics.Mean(name="generator_loss")
+        self.total_generator_loss = tf.keras.metrics.Mean(name="total_generator_loss")
+        #self.imputation_loss = tf.keras.metrics.Mean(name="imputation_loss")
+        self.regularization_loss = tf.keras.metrics.Mean(name="regularization_loss")
+
+        self.accuracy = tf.keras.metrics.Accuracy(name="accuracy")
+    
+    @property
+    def metrics(self):
+        return [self.classifier_loss, self.total_generator_loss, self.regularization_loss, self.accuracy]
+    
+
+
+    def generator_step(self, inputs, prediction_target, mask, label_target, training=True):
+        for _ in range(self.config.G_epoch if training else 1):
+            dim_size = self.config.input_dimension_size
+            num_steps = self.config.num_steps
+            batch_size = self.config.batch_size
+
+
+            with tf.GradientTape() as tape, tf.GradientTape() as tape_c:
+                # reconstruction
+                _, last_cell = self.rnn(inputs)
+                
+                # reshape prediction_target and corresponding mask  into [batch * (numsteps-1), hidden_size]
+                # prediction_targets = tf.reshape(prediction_target, [-1, dim_size])
+                # masks = tf.reshape(mask, [-1, dim_size])
+
+                # loss_imputation = tf.reduce_mean(tf.square( (prediction_targets - prediction) * masks )) / (self.config.batch_size)
+
+                # regularization
+                reg_variables = self.rnn.trainable_variables + self.classifier.trainable_variables if self.config.reg_loss else []
+                regularization_loss = 1e-4 * sum(tf.nn.l2_loss(i) for i in reg_variables)
+
+            
+                # prediction = tf.reshape(prediction, [-1, (num_steps - 1) * dim_size])
+                # M = tf.reshape(mask, [-1, (num_steps - 1) * dim_size])
+                # prediction_target = tf.reshape(prediction_target, [-1, (num_steps - 1) * dim_size])
+                
+                # real_pre = prediction * (1 - M) + prediction_target * M
+                # real_pre = tf.reshape(real_pre, [batch_size, (num_steps-1)*dim_size])
+
+                # predict_M = self.discriminator(real_pre)
+                # predict_M = tf.reshape(predict_M, [-1, (num_steps-1)*dim_size])
+                
+
+                # G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=predict_M, labels=1 - M) * (1-M))
+
+                #loss_imputation = tf.reshape(loss_imputation, [-1, (num_steps-1) * dim_size])
+                label_logits = self.classifier(last_cell)
+
+                # NOTE: softmax_cross_entropy_with_logits
+                # Measures the probability error in discrete classification tasks in which the classes are mutually exclusive (each entry is in exactly one class)
+                loss_classification = tf.nn.softmax_cross_entropy_with_logits(labels=tf.stop_gradient(label_target), logits=label_logits, name='loss_classification')
+
+                total_G_loss = regularization_loss + loss_classification
+
+            if training:
+                # update generator
+                g_grads = tape.gradient(total_G_loss, self.rnn.trainable_variables)
+                self.g_optimizer.apply_gradients(zip(g_grads, self.rnn.trainable_variables))
+                
+                # update classifier
+                c_grads = tape_c.gradient(loss_classification, self.classifier.trainable_variables)
+                self.classifier_optimizer.apply_gradients(zip(c_grads, self.classifier.trainable_variables))
+   
+
+        self.regularization_loss.update_state(regularization_loss)
+        # self.imputation_loss.update_state(loss_imputation)   
+        # self.generator_loss.update_state(G_loss)
+        self.classifier_loss.update_state(loss_classification)
+        self.total_generator_loss.update_state(total_G_loss)
+        
+        # for get the classfication accuracy, label_predict has shape (batch_size, self.class_num)
+        label_predict = tf.nn.softmax(label_logits, name='test_probab')
+        self.accuracy.update_state(tf.argmax(label_target, axis=1), tf.argmax(label_predict, axis=1))
+
+    def train_step(self, data, training=True):
+        inputs, prediction_target, mask, label_target = data
+
+        #self.discriminator_step(inputs, mask, training=training)
+        self.generator_step(inputs, prediction_target, mask, label_target, training=training)
+
+
+        return {
+            "accuracy": self.accuracy.result(),
+            "c_loss": self.classifier_loss.result(),
+            # "g_loss": self.generator_loss.result(),
+            # "imp_loss": self.imputation_loss.result(),
             "reg_loss": self.regularization_loss.result(),
             "total_g_loss": self.total_generator_loss.result()
         }

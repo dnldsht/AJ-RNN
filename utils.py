@@ -225,12 +225,13 @@ def load_sits_rf(seed=23):
 
     return train_dataset, val_dataset, test_dataset
 
-def load_sits(smaller_dataset=False, seed=23):
+def load_sits(smaller_dataset=False, seed=23, with_imputation=False):
     data = np.load('SITS-Missing-Data/D1_balaruc_samples.npy')
     masks = np.load('SITS-Missing-Data/D2_balaruc_masks.npy')
     lut = np.load('SITS-Missing-Data/D3_balaruc_lut.npy')
     
-    data[np.where(masks == 1)] = MISSING_VALUE
+    if not with_imputation:
+        data[np.where(masks == 1)] = MISSING_VALUE
 
     num_steps = data.shape[1]
     num_bands = data.shape[2]
@@ -263,9 +264,9 @@ def load_sits(smaller_dataset=False, seed=23):
 
     
 
-def load(train, test, smaller_dataset=False, seed=23):
+def load(train, test, smaller_dataset=False, seed=23, with_imputation=False):
     if train == 'SITS':
-        return load_sits(smaller_dataset, seed=seed)
+        return load_sits(smaller_dataset, seed=seed, with_imputation=with_imputation)
     
     train_dataset, num_classes, num_steps, num_bands = load_dataset(train, True)
     v_dataset = load_dataset(test, False)

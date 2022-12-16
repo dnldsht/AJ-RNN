@@ -1,5 +1,5 @@
 import tensorflow as tf
-from ajrnn import AJRNN, Config
+from ajrnn import AJRNN, LighAJRNN, Config
 
 import utils
 import argparse
@@ -25,10 +25,11 @@ class TestCallback(tf.keras.callbacks.Callback):
 
 
 def main(config: Config):
+    light_ajrnn = config.light_ajrnn
 
     print(f"Training w/ {config.train_data_filename}")
     
-    train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename, config.smaller_dataset, config.seed)
+    train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename, config.smaller_dataset, config.seed, not light_ajrnn)
 
     config.num_steps = num_steps
     config.input_dimension_size = num_bands
@@ -51,8 +52,9 @@ def main(config: Config):
     
     utils.dump_json(f"{config.results_path}/config.json", config.__dict__)
 
-    model = AJRNN(config)
+    model = LighAJRNN(config) if light_ajrnn else AJRNN(config)
     model.compile()
+    model.summary()
 
 
     model_file = f"{config.results_path}/model/weights"
@@ -124,6 +126,7 @@ if __name__ == "__main__":
     parser.add_argument('--GPU', type=str, required=False, default='0', help='GPU to use')
     parser.add_argument('--reg_loss', default=False, action='store_true', help='Add regularization loss')
     parser.add_argument('--seed', type=int, required=True, default=23, help='GPU to use')
+    parser.add_argument('--light_ajrnn', default=False, action='store_true', help='Use light AJRNN')
 
     parser.add_argument('-results', '--results_path', type=str, required=True, default=None, help='Path of results')
     parser.add_argument('-small', '--smaller_dataset', default=False, action='store_true', help='Load smaller dataset')
