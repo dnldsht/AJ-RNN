@@ -56,3 +56,22 @@ G-LIGHT-GRU128-G1-LR3-B256-REG          196        79.6            79.3  77.6   
 G-LIGHT-GRU128-G1-LR3-B256-REG           89        85.3            79.3  80.4                          276          1            128           256           1e-03         0    3.69
 G-LIGHT-GRU128-G1-LR6-B256-REG           89        85.7            83.6  85.6                         1000          1            128           256           1e-06         0    7.48
 G-LIGHT-GRU128-G1-LR6-B256-REG          196        81.3            79                                  160          1            128           256           1e-06         0
+
+
+### BS 32 vs 256
+
+## average
+name                            runs    accuracy    val_accuracy    test_accuracy    best_val_epoch    G_epoch    hidden_size    batch_size    learning_rate    dropout    train_time
+----------------------------  ------  ----------  --------------  ---------------  ----------------  ---------  -------------  ------------  ---------------  ---------  ------------
+GRU128-G1-LR8-BS32                 3        86.6            70.8             71               544.7          1            128            32            1e-08        0           20.91
+GRU128-G1-LR3-BS256-REG-DROP       2        89.4            84.8             81.2             229.5          1            128           256            0.001        0.5         13.44
+
+
+## raw
+name                          week      seed    accuracy    val_accuracy  test_accuracy      best_val_epoch    G_epoch    hidden_size    batch_size    learning_rate    dropout  train_time
+----------------------------  ------  ------  ----------  --------------  ---------------  ----------------  ---------  -------------  ------------  ---------------  ---------  ------------
+GRU128-G1-LR8-BS32            week49      89        85              63.9  71.0                           99          1            128            32            1e-08        0    20.91
+GRU128-G1-LR8-BS32            week49      23        87.9            76.5                                692          1            128            32            1e-08        0
+GRU128-G1-LR8-BS32            week49     196        86.9            72.1                                840          1            128            32            1e-08        0
+GRU128-G1-LR3-BS256-REG-DROP  week49      89        98.3            87.2  85.5                          305          1            128           256            0.001        0.5  13.44
+GRU128-G1-LR3-BS256-REG-DROP  week49      23        80.6            82.5  76.8                          154          1            128           256            0.001        0.5  8.79
