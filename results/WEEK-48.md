@@ -15,6 +15,27 @@
 - test different G epochs
 - plot test metrics each epoch
 
+# average
+name                            runs    accuracy    val_accuracy    test_accuracy    best_val_epoch    G_epoch     batch_size    learning_rate  dropout  
+----------------------------- ------  ----------  --------------  ---------------  ----------------  ---------   ------------  ---------------  ---------
+GRU128-G1-LR6-BS32                 2        86.2            65.5             64.2              34            1             32            1e-06  0       
+GRU128-G5-LR6-BS32                 1        90.7            27.8             29.6               7            5             32            1e-06            
+GRU128-G5-LR6-BS32                 1        95.1            19.1             28.8              24            5             32            1e-06  0        
+GRU128-G5-LR6-BS32-REG-DROP        1        99              19.4             27.8             351            5             32            1e-06  0.5
+
+GRU128-G1-LR3-BS32-REG             1        98.2            20.6             30.1             492            1             32            1e-03  0  
+GRU128-G1-LR3-BS32-REG-DROP        1        97.8            20.4             29.3             306            1             32            1e-03  0.5      
+
+GRU128-G1-LR6-BS256                2        85.5            82.8             80.6             599            1            256            1e-06  0        
+GRU128-G5-LR6-BS256                2        87.7            73.2             73.4             205            5            256            1e-06           
+GRU128-G5-LR6-BS256-REG-DROP       2        85.9            74.7             77               151.5          5            256            1e-06  0.5     
+GRU128-G5-LR6-BS256                1        85.8            76.8             76.6              90            5            256            1e-06   
+
+GRU128-G1-LR3-BS256-REG            2        92              84.4             78.7             553            1            256            1e-03  0
+GRU128-G1-LR3-BS256                1        97.9            87.7             82.5             600            1            256            1e-03                  
+GRU128-G1-LR3-BS256-REG-DROP       2        91.5            85.8             85.4             583            1            256            1e-03  0.5      
+
+
 ## average BS256
 
 ### GRU128-G5-LR6-BS256 (3 runs)

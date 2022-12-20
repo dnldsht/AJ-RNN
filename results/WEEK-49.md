@@ -19,18 +19,19 @@
 # light AJRNN
 ## average
 
- runs  name                                    accuracy    val_accuracy    test_accuracy    best_val_epoch    G_epoch    hidden_size    batch_size    learning_rate    dropout    train_time
-------  -----------------------------------  ----------  --------------  ---------------  ----------------  ---------  -------------  ------------  ---------------  ---------  ------------
-     2  G-LIGHT-GRU128-G1-LR6-B32-REG              86.1            49               54.3                94          1            128            32           1e-06         0            2.68
-     1  G-LIGHT-GRU128-G1-LR3-B256-REG-DROP        78.6            77.7             78.5                26          1            128           256           0.001         0.5          0.99
-     2  G-LIGHT-GRU128-G1-LR5-B32-REG              85.8            40.2             44.2                 6          1            128            32           1e-05         0            1.39
-     2  G-LIGHT-GRU128-G1-LR5-B256-REG             85.4            84               83.3               339          1            128           256           1e-05         0            3.37
-     2  G-LIGHT-GRU128-G1-LR6-B256-REG             83.7            81.7             85.6              1000          1            128           256           1e-06         0            7.48
-     2  G-LIGHT-GRU128-G1-LR7-B32-REG              84.1            51.8             53                   1          1            128            32           1e-07         0            1.4
-     2  G-LIGHT-GRU128-G1-LR4-B256-REG             91.5            87               86.6               354          1            128           256           0.0001        0            3.62
-     3  G-LIGHT-GRU128-G1-LR8-B32-REG              85.5            56.8             57.1              1000          1            128            32           1e-08         0           13.66
-     3  G-LIGHT-GRU128-G1-LR3-B256-REG             80.6            78.2             75.1                77          1            128           256           0.001         0            1.63
-     1  G-LIGHT-GRU128-G1-LR3-B32-REG-DROP         98.6            22.1             30.9               169          1            128            32           0.001         0.5          3.56
+  runs  name                                   accuracy    val_accuracy    test_accuracy    best_val_epoch    batch_size    learning_rate    dropout
+------  -----------------------------------  ----------  --------------  ---------------  ----------------  ------------  ---------------  ---------
+     1  G-LIGHT-GRU128-G1-LR3-B32-REG-DROP         98.6            22.1             30.9               169            32           1e-03         0.5
+     2  G-LIGHT-GRU128-G1-LR5-B32-REG              85.8            40.2             44.2                 6            32           1e-05         0  
+     2  G-LIGHT-GRU128-G1-LR6-B32-REG              86.1            49               54.3                94            32           1e-06         0  
+     2  G-LIGHT-GRU128-G1-LR7-B32-REG              84.1            51.8             53                   1            32           1e-07         0  
+     3  G-LIGHT-GRU128-G1-LR8-B32-REG              85.5            56.8             57.1              1000            32           1e-08         0  
+     
+     1  G-LIGHT-GRU128-G1-LR3-B256-REG-DROP        78.6            77.7             78.5                26           256           1e-03         0.5
+     3  G-LIGHT-GRU128-G1-LR3-B256-REG             80.6            78.2             75.1                77           256           1e-03         0  
+     2  G-LIGHT-GRU128-G1-LR4-B256-REG             91.5            87               86.6               354           256           1e-04         0  
+     2  G-LIGHT-GRU128-G1-LR5-B256-REG             85.4            84               83.3               339           256           1e-05         0  
+     2  G-LIGHT-GRU128-G1-LR6-B256-REG             83.7            81.7             85.6              1000           256           1e-06         0  
 
 ## raw
 name                                     seed    accuracy    val_accuracy  test_accuracy      best_val_epoch    G_epoch    hidden_size    batch_size    learning_rate    dropout  train_time
@@ -64,7 +65,7 @@ G-LIGHT-GRU128-G1-LR6-B256-REG          196        81.3            79           
 name                            runs    accuracy    val_accuracy    test_accuracy    best_val_epoch    G_epoch    hidden_size    batch_size    learning_rate    dropout    train_time
 ----------------------------  ------  ----------  --------------  ---------------  ----------------  ---------  -------------  ------------  ---------------  ---------  ------------
 GRU128-G1-LR8-BS32                 3        86.6            70.8             71               544.7          1            128            32            1e-08        0           20.91
-GRU128-G1-LR3-BS256-REG-DROP       2        89.4            84.8             81.2             229.5          1            128           256            0.001        0.5         13.44
+GRU128-G1-LR3-BS256-REG-DROP       2        89.4            84.8             81.2             229.5          1            128           256            1e-03        0.5         13.44
 
 
 ## raw
