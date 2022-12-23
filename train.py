@@ -1,6 +1,9 @@
 import tensorflow as tf
 from ajrnn import AJRNN, LighAJRNN, Config
 
+import wandb
+from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
+
 import utils
 import argparse
 import json
@@ -28,6 +31,14 @@ def main(config: Config):
     light_ajrnn = config.light_ajrnn
 
     print(f"Training w/ {config.train_data_filename}")
+
+    wandb.init(
+    # set the wandb project where this run will be logged
+    project="light-ajrnn" if light_ajrnn else "ajrnn",
+
+    # track hyperparameters and run metadata with wandb.config
+    config=config.__dict__,
+)
     
     train_dataset, val_dataset, test_dataset, num_classes, num_steps, num_bands = utils.load(config.train_data_filename, config.test_data_filename, config.smaller_dataset, config.seed, light_ajrnn)
 
@@ -62,11 +73,13 @@ def main(config: Config):
     checkpoint = tf.keras.callbacks.ModelCheckpoint(model_file, save_weights_only=True, monitor='val_accuracy', mode='max', verbose=1, save_best_only=True)
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0, patience=100, verbose=1, mode='max')
     logger = tf.keras.callbacks.CSVLogger(f"{config.results_path}/trainlog.csv", separator=',', append=False)
+    wandb_logger = WandbMetricsLogger()
 
     #test_callback = TestCallback(test_dataset)
     # checkpoint, early_stop,
     callbacks = [
         # test_callback,
+        wandb_logger,
         checkpoint,
         early_stop,
         logger
@@ -102,6 +115,10 @@ def main(config: Config):
         'train_time': train_time,
         'test_time': test_time
     }
+    overview_keys = ['test_accuracy', 'train_time', 'test_time', 'best_val_epoch']
+    overview = {k: overview[k] for k in overview_keys if k in overview}
+    wandb.log(overview)
+    wandb.finish()
     utils.dump_json(f"{config.results_path}/overview.json", overview)
 
 
