@@ -1,5 +1,6 @@
 import tensorflow as tf
 from ajrnn import AJRNN, LighAJRNN, Config
+import collections.abc
 
 import wandb
 from wandb.keras import WandbMetricsLogger, WandbModelCheckpoint
@@ -106,6 +107,9 @@ def main(config: Config):
         start_test_time = time.time()
         test_accuracy = model.evaluate(test_dataset, verbose=config.verbose)
         test_time = round(time.time()-start_test_time, 2)
+
+        if isinstance(test_accuracy, collections.abc.Sequence):
+          test_accuracy = test_accuracy[0]
     
     overview = {
         'train_accuracy': h['accuracy'][-1],
