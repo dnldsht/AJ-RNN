@@ -1,0 +1,49 @@
+method: random
+metric:
+  goal: maximize
+  name: epoch/val_accuracy
+parameters:
+  epoch:
+    value: 1000
+  D_epoch:
+    distribution: int_uniform
+    max: 2
+    min: 1
+  G_epoch:
+    distribution: int_uniform
+    max: 5
+    min: 1
+  batch_size:
+    distribution: int_uniform
+    max: 512
+    min: 16
+  dropout:
+    distribution: uniform
+    max: 1
+    min: 0
+  hidden_size:
+    distribution: int_uniform
+    max: 256
+    min: 64
+  lamda:
+    distribution: int_uniform
+    max: 2
+    min: 1
+  lamda_D:
+    distribution: int_uniform
+    max: 2
+    min: 1
+  layer_num:
+    distribution: int_uniform
+    max: 2
+    min: 1
+  learning_rate:
+    distribution: uniform
+    max: 0.002
+    min: 5e-07
+  seed:
+    distribution: categorical
+    values: 
+      - 196
+      - 89
+program: train.py
