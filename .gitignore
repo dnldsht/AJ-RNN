@@ -142,3 +142,5 @@ logs/*
 models/*
 SITS-Missing-Data/*
 sits/*
+
+results/*

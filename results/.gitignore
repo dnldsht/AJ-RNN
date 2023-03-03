@@ -1,4 +1,0 @@
-#avoid to push weights
-*/**/model/*
-*/**/trainlog*
-*/model/*
